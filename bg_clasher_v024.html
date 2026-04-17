@@ -827,6 +827,10 @@
 
 <div id="map"></div>
 
+<div id="iconErrorBar" style="display:none;position:absolute;bottom:28px;left:0;right:0;background:#a83030;color:#fff;padding:4px 12px;font-size:11px;z-index:999;align-items:center;gap:8px">
+  <span>⚠ Could not load unit icons from online source. Set a local icon folder in Scenario Builder → Settings, or check your internet connection.</span>
+  <button class="small" style="margin-left:auto;background:transparent;border:1px solid #fff;color:#fff" onclick="this.parentElement.style.display='none'">Dismiss</button>
+</div>
 <div id="bottombar">
   <span class="mode-display" id="modeDisplay">Pan mode</span>
   <div class="sep"></div>
@@ -835,9 +839,9 @@
   <span id="measureReadout" style="font-family: var(--mono); color: var(--success);"></span>
   <div class="spacer"></div>
   <label style="font-size:10px;color:var(--text-dim);display:flex;align-items:center;gap:4px" title="Unit icon scale">
-    🔍 <input type="range" min="0.2" max="1.5" step="0.05" value="0.5" id="iconScaleSlider" style="width:70px;height:14px"
-      oninput="state.scenario.unitIconScale=parseFloat(this.value);document.getElementById('iconScaleVal').textContent=this.value;renderAllUnits()">
-    <span id="iconScaleVal" style="min-width:22px">0.5</span>
+    🔍 <input type="range" min="0.1" max="0.5" step="0.01" value="0.3" id="iconScaleSlider" style="width:70px;height:14px"
+      oninput="state.scenario.unitIconScale=parseFloat(this.value);document.getElementById('iconScaleVal').textContent=Math.round(this.value*100)+'%';renderAllUnits()">
+    <span id="iconScaleVal" style="min-width:28px">30%</span>
   </label>
   <div class="sep"></div>
   <button class="small" onclick="openPanel('dice')">🎲 Dice</button>
@@ -931,7 +935,10 @@ const state = {
     weather: '',
     visibility: '',
     symbolLibraryURL: '',
-    unitIconScale: 0.5
+    unitIconScale: 0.3,
+    iconScaleMin: 0.1,
+    iconScaleMax: 0.5,
+    localIconFolder: ''
   },
   viewRole: 'umpire',
   turnNumber: 0,
@@ -1373,7 +1380,7 @@ function formatDist(m) {
   if (m >= 1000) return (m/1000).toFixed(2) + ' km';
   return Math.round(m) + ' m';
 }
-function cloneDeep(o) { return JSON.parse(JSON.stringify(o)); }
+function cloneDeep(o) { if (o === undefined || o === null) return o; return JSON.parse(JSON.stringify(o)); }
 
 // ═══════════════════════════════════════════════════════════════════
 // ROLE / VISIBILITY
@@ -1607,25 +1614,59 @@ const ALL_UNIT_TYPES = [
   { id: 'other', name: 'Unspecified / Other' }
 ];
 const iconCache = {};
+let iconLoadErrors = 0;
+let iconLoadErrorShown = false;
 
 function iconCacheKey(side, type, echelon) {
   return `${ICON_SIDE_MAP[side]||'BLUFOR'}_${ICON_TYPE_MAP[type]||'Unspecified'}_${ICON_ECHELON_MAP[echelon]||'Unspecified'}`;
 }
+function iconFileName(side, type, echelon) {
+  return iconCacheKey(side, type, echelon) + '.svg';
+}
 function iconURL(side, type, echelon) {
-  return ICON_BASE_URL + iconCacheKey(side, type, echelon) + '.svg';
+  return ICON_BASE_URL + iconFileName(side, type, echelon);
 }
 
 async function fetchIcon(side, type, echelon) {
   const key = iconCacheKey(side, type, echelon);
   if (iconCache[key] !== undefined) return iconCache[key];
+  const filename = iconFileName(side, type, echelon);
+
+  // Try local folder first
+  const localFolder = (state.scenario.localIconFolder || '').trim();
+  if (localFolder) {
+    const sep = localFolder.endsWith('/') ? '' : '/';
+    try {
+      const resp = await fetch(localFolder + sep + filename);
+      if (resp.ok) {
+        const svg = await resp.text();
+        if (svg.includes('<svg')) { iconCache[key] = svg; return svg; }
+      }
+    } catch (e) { /* fall through to online */ }
+  }
+
+  // Fall back to GitHub
   try {
-    const resp = await fetch(iconURL(side, type, echelon));
-    if (!resp.ok) { iconCache[key] = null; return null; }
+    const resp = await fetch(ICON_BASE_URL + filename);
+    if (!resp.ok) { iconCache[key] = null; trackIconError(filename); return null; }
     const svg = await resp.text();
-    if (!svg.includes('<svg')) { iconCache[key] = null; return null; }
+    if (!svg.includes('<svg')) { iconCache[key] = null; trackIconError(filename); return null; }
     iconCache[key] = svg;
     return svg;
-  } catch (e) { iconCache[key] = null; return null; }
+  } catch (e) {
+    iconCache[key] = null;
+    trackIconError(filename, e);
+    return null;
+  }
+}
+
+function trackIconError(filename, err) {
+  iconLoadErrors++;
+  if (!iconLoadErrorShown && iconLoadErrors >= 2) {
+    iconLoadErrorShown = true;
+    const bar = document.getElementById('iconErrorBar');
+    if (bar) bar.style.display = 'flex';
+  }
 }
 
 // Prefetch icon for a unit and re-render when ready
@@ -1798,7 +1839,7 @@ function renderUnit(unit) {
   let svg, iconSize, iconAnchor;
   if (displayMode === 'suspected') {
     svg = generateSuspectedSVG(unit);
-    const sc = state.scenario.unitIconScale || 0.5;
+    const sc = state.scenario.unitIconScale || 0.3;
     iconSize = [Math.round(38 * sc), Math.round(38 * sc)];
     iconAnchor = [Math.round(19 * sc), Math.round(19 * sc)];
   } else {
@@ -1809,7 +1850,7 @@ function renderUnit(unit) {
     const hMatch = svg.match(/height="(\d+)"/);
     const w = wMatch ? parseInt(wMatch[1]) : 54;
     const h = hMatch ? parseInt(hMatch[1]) : 46;
-    const sc = state.scenario.unitIconScale || 0.5;
+    const sc = state.scenario.unitIconScale || 0.3;
     iconSize = [Math.round(w * sc), Math.round(h * sc)];
     iconAnchor = [Math.round(w * sc / 2.8), Math.round(h * sc / 2)];
   }
@@ -3912,9 +3953,19 @@ function renderScenGeneral(c) {
     </div>
     <div class="field-group"><label>Symbol Library URL (JSON manifest, imported on demand from Symbols tab)</label>
       <input type="text" value="${esc(s.symbolLibraryURL||'')}" oninput="state.scenario.symbolLibraryURL=this.value" placeholder="https://.../symbols.json"></div>
-    <div class="field-group"><label>Unit Icon Scale (${(s.unitIconScale||0.5).toFixed(2)})</label>
-      <input type="range" min="0.2" max="1.5" step="0.05" value="${s.unitIconScale||0.5}"
-        oninput="state.scenario.unitIconScale=parseFloat(this.value);document.getElementById('iconScaleSlider').value=this.value;document.getElementById('iconScaleVal').textContent=parseFloat(this.value).toFixed(2);this.previousElementSibling.textContent='Unit Icon Scale ('+parseFloat(this.value).toFixed(2)+')';renderAllUnits()">
+    <div class="field-group"><label>Local Icon Folder (tried before online source; relative or absolute path)</label>
+      <input type="text" value="${esc(s.localIconFolder||'')}" oninput="state.scenario.localIconFolder=this.value" placeholder="e.g. icons/ or /path/to/icons"></div>
+    <div class="field-group"><label>Unit Icon Scale: ${Math.round((s.unitIconScale||0.3)*100)}%</label>
+      <input type="range" min="${s.iconScaleMin||0.1}" max="${s.iconScaleMax||0.5}" step="0.01" value="${s.unitIconScale||0.3}"
+        oninput="state.scenario.unitIconScale=parseFloat(this.value);this.previousElementSibling.textContent='Unit Icon Scale: '+Math.round(this.value*100)+'%';document.getElementById('iconScaleSlider').value=this.value;document.getElementById('iconScaleSlider').min=state.scenario.iconScaleMin||0.1;document.getElementById('iconScaleSlider').max=state.scenario.iconScaleMax||0.5;document.getElementById('iconScaleVal').textContent=Math.round(this.value*100)+'%';renderAllUnits()">
+    </div>
+    <div class="field-group row">
+      <div><label>Scale Min (%)</label>
+        <input type="number" value="${Math.round((s.iconScaleMin||0.1)*100)}" min="5" max="100" step="5"
+          oninput="state.scenario.iconScaleMin=parseInt(this.value)/100;document.getElementById('iconScaleSlider').min=state.scenario.iconScaleMin;switchScenTab('general')"></div>
+      <div><label>Scale Max (%)</label>
+        <input type="number" value="${Math.round((s.iconScaleMax||0.5)*100)}" min="10" max="300" step="5"
+          oninput="state.scenario.iconScaleMax=parseInt(this.value)/100;document.getElementById('iconScaleSlider').max=state.scenario.iconScaleMax;switchScenTab('general')"></div>
     </div>
     <div class="section-head">Data Management</div>
     <div class="btn-row">
@@ -4071,10 +4122,7 @@ function confirmAddOOBUnit(side, parentId) {
     name,
     designation: desig,
     description: tmpl.description || '',
-    states: (tmpl.states || []).map(s => typeof s === 'string' ? { name: s, customSVG: null } : { name: s.name, customSVG: s.customSVG || null }),
-    movement: cloneDeep(tmpl.movement),
-    rangeRings: cloneDeep(tmpl.rangeRings || {}),
-    stats: cloneDeep(tmpl.stats || []),
+    states: cloneDeep(tmpl.states || []),
     customSVG: tmpl.customSVG || null,
     notes: '',
     deployed: false,
@@ -4161,9 +4209,7 @@ function deployOOBEntry(entryId, latlng) {
     name: entry.name,
     designation: entry.designation,
     description: entry.description,
-    states: (entry.states||[]).map(s => ({ name: s.name, customSVG: s.customSVG || null, active: false })),
-    movement: entry.movement,
-    stats: entry.stats,
+    states: cloneDeep(entry.states),
     notes: entry.notes || '',
     customSVG: entry.customSVG
   });
@@ -4649,17 +4695,14 @@ function renderUnitEditPanel(body, unit) {
     notesHistoryHTML += `</div>`;
   }
 
-  // Visibility checkbox helper for fixed fields
+  const isUmpire = state.viewRole === 'umpire' || !state.gameMode;
+  // Visibility checkbox helper — umpire only
   const visChk = (field) => {
+    if (!isUmpire) return '';
     const fv = unit.fieldVisibility || {};
     const obj = fv[field] || {};
     return `<label title="Tooltip" style="font-size:10px;white-space:nowrap"><input type="checkbox" ${obj.showTooltip?'checked':''} onchange="ensureFV('${unit.id}','${field}').showTooltip=this.checked">Tip</label>
             <label title="Opponent" style="font-size:10px;white-space:nowrap"><input type="checkbox" ${obj.showOpponent?'checked':''} onchange="ensureFV('${unit.id}','${field}').showOpponent=this.checked">Opp</label>`;
-  };
-  // Stat-level visibility checkboxes (for per-state arrays)
-  const statVis = (path) => {
-    return `<label title="Tooltip" style="font-size:10px;white-space:nowrap"><input type="checkbox" \${${path}.showTooltip?'checked':''} onchange="${path}.showTooltip=this.checked">Tip</label>
-            <label title="Opponent" style="font-size:10px;white-space:nowrap"><input type="checkbox" \${${path}.showOpponent?'checked':''} onchange="${path}.showOpponent=this.checked">Opp</label>`;
   };
 
   const activeState = getActiveState(unit);
@@ -4683,20 +4726,20 @@ function renderUnitEditPanel(body, unit) {
         <div class="inline-row">
           ${restricted
             ? `<div style="padding:5px 7px;background:var(--bg-alt);border-radius:3px;text-transform:uppercase;font-weight:600">${unit.side}</div>`
-            : `<select oninput="getUnit('${unit.id}').side=this.value;renderUnit(getUnit('${unit.id}'))">
+            : `<select oninput="getUnit('${unit.id}').side=this.value;prefetchUnitIcon(getUnit('${unit.id}'));renderUnit(getUnit('${unit.id}'))">
                 <option value="bluefor" ${unit.side==='bluefor'?'selected':''}>BLUFOR</option>
                 <option value="opfor" ${unit.side==='opfor'?'selected':''}>OPFOR</option>
               </select>`}
           ${visChk('side')}
         </div></div>
     </div>
-    <div class="field-group row">
+    ${isUmpire ? `<div class="field-group row">
       <div><label>Echelon</label>
-        <select oninput="getUnit('${unit.id}').echelon=this.value;renderUnit(getUnit('${unit.id}'))">
+        <select oninput="getUnit('${unit.id}').echelon=this.value;prefetchUnitIcon(getUnit('${unit.id}'));renderUnit(getUnit('${unit.id}'))">
           ${['none','squad','section','platoon','company','battalion','regiment','brigade'].map(k =>
             `<option value="${k}" ${(unit.echelon||'platoon')===k?'selected':''}>${k}</option>`).join('')}
         </select></div>
-    </div>
+    </div>` : ''}
     <div class="field-group"><label>Brief Description</label>
       <div class="inline-row">
         <input type="text" value="${esc(unit.description||'')}" oninput="getUnit('${unit.id}').description=this.value" style="flex:1">
@@ -4706,18 +4749,26 @@ function renderUnitEditPanel(body, unit) {
 
     <div class="section-head">Active State</div>
     <div class="inline-row" style="margin-bottom:6px">
-      <select style="flex:1;font-weight:700" onchange="getUnit('${unit.id}').activeStateId=this.value;renderUnit(getUnit('${unit.id}'));renderUnitRangeRings(getUnit('${unit.id}'));renderUnitEditPanel(document.getElementById('panelBody'),getUnit('${unit.id}'))">
+      <select style="flex:1;font-weight:700" ${restricted ? 'disabled' : ''} onchange="getUnit('${unit.id}').activeStateId=this.value;renderUnit(getUnit('${unit.id}'));renderUnitRangeRings(getUnit('${unit.id}'));renderUnitEditPanel(document.getElementById('panelBody'),getUnit('${unit.id}'))">
         ${stateOpts}
       </select>
-      ${restricted ? '' : `<button class="small" onclick="addUnitState('${unit.id}')">+ Add</button>`}
-    </div>`;
+      ${isUmpire ? `<button class="small" onclick="addUnitState('${unit.id}')">+ Add</button>` : ''}
+    </div>
+
+    ${orderHTML}
+
+    <div class="section-head">Notes</div>
+    <textarea oninput="getUnit('${unit.id}').notes=this.value" placeholder="Free-form notes, saved per-turn on End Turn">${esc(unit.notes)}</textarea>
+    ${notesHistoryHTML}`;
 
   // ── Active state content ──
   if (activeState) {
     const sid = activeState.id;
     const sp = `getUnit('${unit.id}').states.find(s=>s.id==='${sid}')`;
-    if (!restricted) {
-      html += `<div style="background:var(--bg-alt);padding:8px;border-radius:6px;margin-bottom:8px">
+
+    // State editor (umpire only)
+    if (isUmpire) {
+      html += `<div style="background:var(--bg-alt);padding:8px;border-radius:6px;margin-bottom:8px;margin-top:8px">
         <div class="inline-row">
           <input type="text" value="${esc(activeState.name)}" placeholder="State name" oninput="${sp}.name=this.value" style="flex:2">
           <input type="text" value="${esc(activeState.abbr||'')}" placeholder="Abbr" oninput="${sp}.abbr=this.value" style="width:55px">
@@ -4732,75 +4783,90 @@ function renderUnitEditPanel(body, unit) {
     // ── Stats ──
     html += `<div class="section-head">Stats — ${esc(activeState.abbr||activeState.name)}</div>`;
     (activeState.stats||[]).forEach((s, idx) => {
-      html += `<div style="background:var(--bg-alt);padding:5px;border-radius:4px;margin-bottom:3px;font-size:11px">
-        <div class="inline-row">
-          <input type="text" value="${esc(s.name)}" placeholder="Name" oninput="${sp}.stats[${idx}].name=this.value" style="flex:2">
-          <input type="text" value="${esc(s.abbr||'')}" placeholder="Abbr" oninput="${sp}.stats[${idx}].abbr=this.value" style="width:50px">
-          ${restricted ? '' : `<button class="small danger" onclick="${sp}.stats.splice(${idx},1);renderUnitEditPanel(document.getElementById('panelBody'),getUnit('${unit.id}'))">×</button>`}
-        </div>
-        <div class="inline-row" style="margin-top:2px">
-          <input type="text" value="${esc(String(s.value||''))}" placeholder="Value" oninput="${sp}.stats[${idx}].value=this.value" style="flex:1">
-          <input type="text" value="${esc(s.notes||'')}" placeholder="Notes" oninput="${sp}.stats[${idx}].notes=this.value" style="flex:2">
-          <label title="Tooltip" style="font-size:10px;white-space:nowrap"><input type="checkbox" ${s.showTooltip?'checked':''} onchange="${sp}.stats[${idx}].showTooltip=this.checked">Tip</label>
-          <label title="Opponent" style="font-size:10px;white-space:nowrap"><input type="checkbox" ${s.showOpponent?'checked':''} onchange="${sp}.stats[${idx}].showOpponent=this.checked">Opp</label>
-        </div>
-      </div>`;
+      if (isUmpire) {
+        html += `<div style="background:var(--bg-alt);padding:5px;border-radius:4px;margin-bottom:3px;font-size:11px">
+          <div class="inline-row">
+            <input type="text" value="${esc(s.name)}" placeholder="Name" oninput="${sp}.stats[${idx}].name=this.value" style="flex:2">
+            <input type="text" value="${esc(s.abbr||'')}" placeholder="Abbr" oninput="${sp}.stats[${idx}].abbr=this.value" style="width:50px">
+            <button class="small danger" onclick="${sp}.stats.splice(${idx},1);renderUnitEditPanel(document.getElementById('panelBody'),getUnit('${unit.id}'))">×</button>
+          </div>
+          <div class="inline-row" style="margin-top:2px">
+            <input type="text" value="${esc(String(s.value||''))}" placeholder="Value" oninput="${sp}.stats[${idx}].value=this.value" style="flex:1">
+            <input type="text" value="${esc(s.notes||'')}" placeholder="Notes" oninput="${sp}.stats[${idx}].notes=this.value" style="flex:2">
+            <label title="Tooltip" style="font-size:10px;white-space:nowrap"><input type="checkbox" ${s.showTooltip?'checked':''} onchange="${sp}.stats[${idx}].showTooltip=this.checked">Tip</label>
+            <label title="Opponent" style="font-size:10px;white-space:nowrap"><input type="checkbox" ${s.showOpponent?'checked':''} onchange="${sp}.stats[${idx}].showOpponent=this.checked">Opp</label>
+          </div>
+        </div>`;
+      } else {
+        // Player view: read-only display, no Opp checkbox
+        html += `<div class="inline-row" style="font-size:11px;padding:2px 0">
+          <span style="color:var(--text-dim);min-width:70px">${esc(s.abbr||s.name)}</span>
+          <span style="flex:1;font-weight:600">${esc(String(s.value||'—'))}</span>
+        </div>`;
+      }
     });
-    if (!restricted) {
+    if (isUmpire) {
       html += `<button class="small" onclick="${sp}.stats.push({id:uid(),name:'',abbr:'',value:'',notes:'',showTooltip:true,showOpponent:false});renderUnitEditPanel(document.getElementById('panelBody'),getUnit('${unit.id}'))">+ Add Stat</button>`;
     }
 
     // ── Movement ──
     html += `<div class="section-head">Movement (km/h) — ${esc(activeState.abbr||activeState.name)}</div>`;
     (activeState.movement||[]).forEach((m, idx) => {
-      html += `<div class="inline-row">
-        <input type="text" value="${esc(m.name)}" placeholder="Name" oninput="${sp}.movement[${idx}].name=this.value" style="flex:1;font-size:11px" ${restricted?'readonly':''}>
-        <input type="text" value="${esc(m.abbr||'')}" placeholder="Abbr" oninput="${sp}.movement[${idx}].abbr=this.value" style="width:45px;font-size:11px" ${restricted?'readonly':''}>
-        <input type="number" value="${m.value}" step="0.25" min="0" style="width:55px" ${restricted?'readonly':''}
-          oninput="${sp}.movement[${idx}].value=parseFloat(this.value)||0">
-        <label title="Tooltip" style="font-size:10px;white-space:nowrap"><input type="checkbox" ${m.showTooltip?'checked':''} onchange="${sp}.movement[${idx}].showTooltip=this.checked">Tip</label>
-        <label title="Opponent" style="font-size:10px;white-space:nowrap"><input type="checkbox" ${m.showOpponent?'checked':''} onchange="${sp}.movement[${idx}].showOpponent=this.checked">Opp</label>
-        ${restricted ? '' : `<button class="small danger" onclick="${sp}.movement.splice(${idx},1);renderUnitEditPanel(document.getElementById('panelBody'),getUnit('${unit.id}'))">×</button>`}
-      </div>`;
+      if (isUmpire) {
+        html += `<div class="inline-row">
+          <input type="text" value="${esc(m.name)}" placeholder="Name" oninput="${sp}.movement[${idx}].name=this.value" style="flex:1;font-size:11px">
+          <input type="text" value="${esc(m.abbr||'')}" placeholder="Abbr" oninput="${sp}.movement[${idx}].abbr=this.value" style="width:45px;font-size:11px">
+          <input type="number" value="${m.value}" step="0.25" min="0" style="width:55px"
+            oninput="${sp}.movement[${idx}].value=parseFloat(this.value)||0">
+          <label title="Tooltip" style="font-size:10px;white-space:nowrap"><input type="checkbox" ${m.showTooltip?'checked':''} onchange="${sp}.movement[${idx}].showTooltip=this.checked">Tip</label>
+          <label title="Opponent" style="font-size:10px;white-space:nowrap"><input type="checkbox" ${m.showOpponent?'checked':''} onchange="${sp}.movement[${idx}].showOpponent=this.checked">Opp</label>
+          <button class="small danger" onclick="${sp}.movement.splice(${idx},1);renderUnitEditPanel(document.getElementById('panelBody'),getUnit('${unit.id}'))">×</button>
+        </div>`;
+      } else {
+        html += `<div class="inline-row" style="font-size:11px;padding:2px 0">
+          <span style="color:var(--text-dim);min-width:70px">${esc(m.abbr||m.name)}</span>
+          <span style="font-weight:600">${m.value} km/h</span>
+        </div>`;
+      }
     });
-    if (!restricted) {
+    if (isUmpire) {
       html += `<button class="small" onclick="${sp}.movement.push({id:uid(),name:'',abbr:'',value:0,notes:'',showTooltip:false,showOpponent:false});renderUnitEditPanel(document.getElementById('panelBody'),getUnit('${unit.id}'))">+ Add Movement Rate</button>`;
     }
 
     // ── Range Rings ──
     html += `<div class="section-head">Range Rings — ${esc(activeState.abbr||activeState.name)}</div>`;
     (activeState.rangeRings||[]).forEach((r, idx) => {
-      html += `<div class="inline-row">
-        <input type="checkbox" ${r.visible?'checked':''} onchange="${sp}.rangeRings[${idx}].visible=this.checked;renderUnitRangeRings(getUnit('${unit.id}'))" title="Show on map">
-        <input type="text" value="${esc(r.name)}" placeholder="Name" oninput="${sp}.rangeRings[${idx}].name=this.value" style="flex:1;font-size:11px" ${restricted?'readonly':''}>
-        <input type="number" value="${r.value}" min="0" step="100" style="width:65px"
-          oninput="${sp}.rangeRings[${idx}].value=parseFloat(this.value)||0;renderUnitRangeRings(getUnit('${unit.id}'))">
-        <span style="font-size:10px">m</span>
-        <input type="color" value="${r.color||'#ff0000'}" oninput="${sp}.rangeRings[${idx}].color=this.value;renderUnitRangeRings(getUnit('${unit.id}'))">
-        <label title="Tooltip" style="font-size:10px;white-space:nowrap"><input type="checkbox" ${r.showTooltip?'checked':''} onchange="${sp}.rangeRings[${idx}].showTooltip=this.checked">Tip</label>
-        <label title="Opponent" style="font-size:10px;white-space:nowrap"><input type="checkbox" ${r.showOpponent?'checked':''} onchange="${sp}.rangeRings[${idx}].showOpponent=this.checked">Opp</label>
-        ${restricted ? '' : `<button class="small danger" onclick="${sp}.rangeRings.splice(${idx},1);renderUnitRangeRings(getUnit('${unit.id}'));renderUnitEditPanel(document.getElementById('panelBody'),getUnit('${unit.id}'))">×</button>`}
-      </div>`;
+      if (isUmpire) {
+        html += `<div class="inline-row">
+          <input type="checkbox" ${r.visible?'checked':''} onchange="${sp}.rangeRings[${idx}].visible=this.checked;renderUnitRangeRings(getUnit('${unit.id}'))" title="Show on map">
+          <input type="text" value="${esc(r.name)}" placeholder="Name" oninput="${sp}.rangeRings[${idx}].name=this.value" style="flex:1;font-size:11px">
+          <input type="number" value="${r.value}" min="0" step="100" style="width:65px"
+            oninput="${sp}.rangeRings[${idx}].value=parseFloat(this.value)||0;renderUnitRangeRings(getUnit('${unit.id}'))">
+          <span style="font-size:10px">m</span>
+          <input type="color" value="${r.color||'#ff0000'}" oninput="${sp}.rangeRings[${idx}].color=this.value;renderUnitRangeRings(getUnit('${unit.id}'))">
+          <label title="Tooltip" style="font-size:10px;white-space:nowrap"><input type="checkbox" ${r.showTooltip?'checked':''} onchange="${sp}.rangeRings[${idx}].showTooltip=this.checked">Tip</label>
+          <label title="Opponent" style="font-size:10px;white-space:nowrap"><input type="checkbox" ${r.showOpponent?'checked':''} onchange="${sp}.rangeRings[${idx}].showOpponent=this.checked">Opp</label>
+          <button class="small danger" onclick="${sp}.rangeRings.splice(${idx},1);renderUnitRangeRings(getUnit('${unit.id}'));renderUnitEditPanel(document.getElementById('panelBody'),getUnit('${unit.id}'))">×</button>
+        </div>`;
+      } else {
+        html += `<div class="inline-row" style="font-size:11px;padding:2px 0">
+          <input type="checkbox" ${r.visible?'checked':''} onchange="${sp}.rangeRings[${idx}].visible=this.checked;renderUnitRangeRings(getUnit('${unit.id}'))" title="Show on map">
+          <span style="color:var(--text-dim);min-width:70px">${esc(r.abbr||r.name)}</span>
+          <span style="font-weight:600">${r.value}m</span>
+        </div>`;
+      }
     });
-    if (!restricted) {
+    if (isUmpire) {
       html += `<button class="small" onclick="${sp}.rangeRings.push({id:uid(),name:'',abbr:'',value:0,color:'#e94560',visible:false,notes:'',showTooltip:true,showOpponent:false});renderUnitEditPanel(document.getElementById('panelBody'),getUnit('${unit.id}'))">+ Add Range Ring</button>`;
     }
   } else {
     html += `<p style="font-size:11px;color:var(--text-dim)">No states defined. Add a state to configure unit capabilities.</p>`;
   }
 
-  html += `${orderHTML}
-    ${detectionHTML}`;
-  if (!restricted) {
-    html += `<div class="section-head">Custom SVG (overrides generated icon, all states)</div>
-    <textarea style="min-height:50px;font-family:var(--mono);font-size:10px" oninput="getUnit('${unit.id}').customSVG=this.value||null;renderUnit(getUnit('${unit.id}'))">${esc(unit.customSVG||'')}</textarea>`;
-  }
-  html += `<div class="section-head">Notes</div>
-    <textarea oninput="getUnit('${unit.id}').notes=this.value" placeholder="Free-form notes, saved per-turn on End Turn">${esc(unit.notes)}</textarea>
-    ${notesHistoryHTML}
+  html += `${detectionHTML}
     <div class="btn-row">
       <button onclick="map.setView(getUnit('${unit.id}').latlng,map.getZoom())">Pan To</button>
-      ${restricted ? '' : `<button class="danger" onclick="if(confirm('Withdraw unit?'))withdrawUnit('${unit.id}')">Withdraw Unit</button>`}
+      ${isUmpire ? `<button class="danger" onclick="if(confirm('Withdraw unit?'))withdrawUnit('${unit.id}')">Withdraw Unit</button>` : ''}
     </div>`;
   body.innerHTML = html;
 }
@@ -5254,8 +5320,13 @@ function renderAll() {
   // Sync icon scale slider
   const sl = document.getElementById('iconScaleSlider');
   const sv = document.getElementById('iconScaleVal');
-  if (sl) { sl.value = state.scenario.unitIconScale || 0.5; }
-  if (sv) { sv.textContent = (state.scenario.unitIconScale || 0.5).toFixed(2); }
+  const sc = state.scenario.unitIconScale || 0.3;
+  if (sl) {
+    sl.min = state.scenario.iconScaleMin || 0.1;
+    sl.max = state.scenario.iconScaleMax || 0.5;
+    sl.value = sc;
+  }
+  if (sv) { sv.textContent = Math.round(sc * 100) + '%'; }
 }
 
 // ═══════════════════════════════════════════════════════════════════
