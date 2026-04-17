@@ -1,0 +1,1 @@
+Battlegroup Clasher is a simple html-based tool for playing Battlegroup Clash: Baltics or similar modern war games.
