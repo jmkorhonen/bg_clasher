@@ -1,0 +1,5381 @@
+{
+  "version": 4,
+  "scenario": {
+    "name": "Example Scenario - Tuohikotti",
+    "description": "A sample of what BG Clasher could do.",
+    "startDateTime": "2026-04-15T08:00",
+    "turnDurationMinutes": 20,
+    "turnLimit": 6,
+    "weather": "",
+    "visibility": "",
+    "symbolLibraryURL": "",
+    "unitIconScale": 0.15,
+    "iconScaleMin": 0.1,
+    "iconScaleMax": 0.5,
+    "localIconFolder": "",
+    "suspectedIcons": {
+      "bluefor": "",
+      "opfor": ""
+    },
+    "modifiers": [
+      {
+        "id": "mod_atgm",
+        "name": "ATGM shots",
+        "abbr": "ATGM",
+        "description": "Anti-tank missile shots (Javelin or Stabber) remaining.",
+        "type": "counter",
+        "levels": [
+          {
+            "abbr": "2",
+            "label": "Full: 2 ATGM shots remaining",
+            "color": "#2a8f3a"
+          },
+          {
+            "abbr": "1",
+            "label": "Depleted: 1 ATGM shot remaining",
+            "color": "#e8a23a"
+          }
+        ],
+        "startLevel": 0,
+        "removeAtLevel": null,
+        "stackPriority": 1,
+        "visibleToOpponent": false,
+        "addPermission": "umpire",
+        "removePermission": "umpire",
+        "stepPermission": "owner"
+      },
+      {
+        "id": "mod_at",
+        "name": "AT shots",
+        "abbr": "AT",
+        "description": "Anti-tank weapon shots (NLAW or RPG) remaining.",
+        "type": "counter",
+        "levels": [
+          {
+            "abbr": "2",
+            "label": "Full: 2 AT shots remaining",
+            "color": "#2a8f3a"
+          },
+          {
+            "abbr": "1",
+            "label": "Depleted: 1 AT shot remaining",
+            "color": "#e8a23a"
+          }
+        ],
+        "startLevel": 0,
+        "removeAtLevel": null,
+        "stackPriority": 2,
+        "visibleToOpponent": false,
+        "addPermission": "umpire",
+        "removePermission": "umpire",
+        "stepPermission": "owner"
+      },
+      {
+        "id": "mod_dugin",
+        "name": "Digging in / Shell scrapes",
+        "abbr": "DIG",
+        "description": "Prepared positions giving direct/indirect fire DRM.",
+        "type": "counter",
+        "levels": [
+          {
+            "abbr": "DIG",
+            "label": "Digging in: −1 DRM against Direct and Indirect Fire",
+            "color": "#8a6d3b"
+          },
+          {
+            "abbr": "SCR",
+            "label": "Shell scrapes: −2 DRM against Direct and Indirect Fire",
+            "color": "#6b4f27"
+          }
+        ],
+        "startLevel": 0,
+        "removeAtLevel": null,
+        "stackPriority": 3,
+        "visibleToOpponent": true,
+        "addPermission": "owner",
+        "removePermission": "owner",
+        "stepPermission": "owner"
+      },
+      {
+        "id": "mod_reorg",
+        "name": "REORG",
+        "abbr": "REORG",
+        "description": "Unit reorganising.",
+        "type": "boolean",
+        "color": "#4a6fa5",
+        "stackPriority": 5,
+        "visibleToOpponent": false,
+        "addPermission": "owner",
+        "removePermission": "owner"
+      },
+      {
+        "id": "mod_assault_reorg",
+        "name": "Assault REORG",
+        "abbr": "A-RE",
+        "description": "Unit reorganising after assault.",
+        "type": "boolean",
+        "color": "#3e5a8a",
+        "stackPriority": 6,
+        "visibleToOpponent": false,
+        "addPermission": "owner",
+        "removePermission": "owner"
+      },
+      {
+        "id": "mod_overwatch",
+        "name": "Overwatch / OW Activated",
+        "abbr": "OW",
+        "description": "Overwatch posture and whether it has already been triggered this turn.",
+        "type": "counter",
+        "levels": [
+          {
+            "abbr": "OW",
+            "label": "Overwatch: able to Reactive Fire",
+            "color": "#2a6bc4"
+          },
+          {
+            "abbr": "OW!",
+            "label": "OW Activated: FE cannot be activated again this turn",
+            "color": "#a33"
+          }
+        ],
+        "startLevel": 0,
+        "removeAtLevel": null,
+        "stackPriority": 4,
+        "visibleToOpponent": true,
+        "addPermission": "owner",
+        "removePermission": "owner",
+        "stepPermission": "any"
+      },
+      {
+        "id": "mod_suppressed",
+        "name": "Suppressed / Disrupted",
+        "abbr": "SUPP",
+        "description": "Suppression state from enemy fire, reducing TQ.",
+        "type": "counter",
+        "levels": [
+          {
+            "abbr": "SUPP",
+            "label": "Suppressed: −1 to FE’s TQ",
+            "color": "#d94a4a"
+          },
+          {
+            "abbr": "DIS",
+            "label": "Disrupted: −2 to FE’s TQ",
+            "color": "#a33030"
+          }
+        ],
+        "startLevel": 0,
+        "removeAtLevel": null,
+        "stackPriority": 7,
+        "visibleToOpponent": true,
+        "addPermission": "opponent",
+        "removePermission": "umpire",
+        "stepPermission": "opponent"
+      }
+    ]
+  },
+  "viewRole": "bluefor",
+  "turnNumber": 0,
+  "nextId": 155,
+  "currentLayerId": "l_tactical_bluefor",
+  "syncMatrix": {
+    "bluefor": {},
+    "opfor": {}
+  },
+  "showOrderTooltips": true,
+  "orderLabelMode": "short",
+  "gameMode": false,
+  "showUnitAnchors": false,
+  "drawingStyle": {
+    "dashArray": null,
+    "weight": null
+  },
+  "detectionCounters": {
+    "bluefor": 1,
+    "opfor": 0
+  },
+  "suspectedIconSVG": null,
+  "unitTemplates": [
+    {
+      "id": "t_mech_inf",
+      "name": "Mech Infantry Pl",
+      "type": "infantry_mech",
+      "echelon": "platoon",
+      "description": "Mechanised infantry platoon",
+      "customSVG": null,
+      "states": [
+        {
+          "id": "id_1",
+          "name": "Combat Ready",
+          "abbr": "Ready",
+          "customSVG": null,
+          "stats": [
+            {
+              "id": "id_2",
+              "name": "Force Element size",
+              "abbr": "FE size",
+              "value": "Platoon",
+              "notes": "Size of the unit",
+              "showTooltip": true,
+              "showOpponent": false
+            },
+            {
+              "id": "id_3",
+              "name": "Force Element type",
+              "abbr": "FE type",
+              "value": "Tracked",
+              "notes": "Type of unit",
+              "showTooltip": true,
+              "showOpponent": false
+            },
+            {
+              "id": "id_4",
+              "name": "Resilience",
+              "abbr": "Resilience",
+              "value": "3",
+              "notes": "FE's ability to withstand Hits",
+              "showTooltip": true,
+              "showOpponent": false
+            },
+            {
+              "id": "id_5",
+              "name": "Troop Quality",
+              "abbr": "TQ",
+              "value": "4",
+              "notes": "FE's training, cohesion & will to fight",
+              "showTooltip": true,
+              "showOpponent": false
+            },
+            {
+              "id": "id_6",
+              "name": "ISTAR Asset",
+              "abbr": "ISTAR",
+              "value": "false",
+              "notes": "FE acts as an ISTAR asset for LOS checks",
+              "showTooltip": false,
+              "showOpponent": false
+            },
+            {
+              "id": "id_7",
+              "name": "C2 Rating",
+              "abbr": "C2",
+              "value": "",
+              "notes": "Command & Control rating for HQs",
+              "showTooltip": false,
+              "showOpponent": false
+            },
+            {
+              "id": "id_8",
+              "name": "Anti-personnel firepower",
+              "abbr": "Apers",
+              "value": "4",
+              "notes": "Attack value against personnel",
+              "showTooltip": true,
+              "showOpponent": false
+            },
+            {
+              "id": "id_9",
+              "name": "Anti-tank firepower",
+              "abbr": "Atk",
+              "value": "3",
+              "notes": "Attack value against armoured vehicles",
+              "showTooltip": true,
+              "showOpponent": false
+            },
+            {
+              "id": "id_10",
+              "name": "Anti-tank firepower type",
+              "abbr": "Atk type",
+              "value": "Normal",
+              "notes": "",
+              "showTooltip": true,
+              "showOpponent": false
+            }
+          ],
+          "movement": [
+            {
+              "id": "id_11",
+              "name": "Max speed",
+              "abbr": "Max",
+              "value": 9,
+              "notes": "",
+              "showTooltip": false,
+              "showOpponent": false
+            },
+            {
+              "id": "id_12",
+              "name": "Easy terrain",
+              "abbr": "Easy",
+              "value": 6,
+              "notes": "",
+              "showTooltip": false,
+              "showOpponent": false
+            },
+            {
+              "id": "id_13",
+              "name": "Moderate terrain",
+              "abbr": "Medium",
+              "value": 3,
+              "notes": "",
+              "showTooltip": false,
+              "showOpponent": false
+            },
+            {
+              "id": "id_14",
+              "name": "Hard terrain",
+              "abbr": "Hard",
+              "value": 0.75,
+              "notes": "",
+              "showTooltip": false,
+              "showOpponent": false
+            },
+            {
+              "id": "id_15",
+              "name": "Impassable terrain",
+              "abbr": "No-go",
+              "value": 0,
+              "notes": "",
+              "showTooltip": false,
+              "showOpponent": false
+            }
+          ],
+          "rangeRings": [
+            {
+              "id": "id_16",
+              "name": "Anti-personnel range",
+              "abbr": "Apers range",
+              "value": 2000,
+              "color": "#d94a4a",
+              "visible": false,
+              "notes": "",
+              "showTooltip": true,
+              "showOpponent": false
+            },
+            {
+              "id": "id_17",
+              "name": "Anti-tank range",
+              "abbr": "Atk range",
+              "value": 1000,
+              "color": "#f5a623",
+              "visible": false,
+              "notes": "",
+              "showTooltip": true,
+              "showOpponent": false
+            },
+            {
+              "id": "id_18",
+              "name": "Indirect range",
+              "abbr": "Indirect",
+              "value": 0,
+              "color": "#4a90d9",
+              "visible": false,
+              "notes": "",
+              "showTooltip": false,
+              "showOpponent": false
+            }
+          ]
+        }
+      ],
+      "notes": ""
+    },
+    {
+      "id": "t_inf_sec",
+      "name": "Infantry Section",
+      "type": "infantry",
+      "echelon": "section",
+      "description": "Dismounted infantry section",
+      "customSVG": null,
+      "states": [
+        {
+          "id": "id_19",
+          "name": "Combat Ready",
+          "abbr": "Ready",
+          "customSVG": null,
+          "stats": [
+            {
+              "id": "id_20",
+              "name": "Force Element size",
+              "abbr": "FE size",
+              "value": "Section",
+              "notes": "Size of the unit",
+              "showTooltip": true,
+              "showOpponent": false
+            },
+            {
+              "id": "id_21",
+              "name": "Force Element type",
+              "abbr": "FE type",
+              "value": "Foot",
+              "notes": "Type of unit",
+              "showTooltip": true,
+              "showOpponent": false
+            },
+            {
+              "id": "id_22",
+              "name": "Resilience",
+              "abbr": "Resilience",
+              "value": "2",
+              "notes": "FE's ability to withstand Hits",
+              "showTooltip": true,
+              "showOpponent": false
+            },
+            {
+              "id": "id_23",
+              "name": "Troop Quality",
+              "abbr": "TQ",
+              "value": "4",
+              "notes": "FE's training, cohesion & will to fight",
+              "showTooltip": true,
+              "showOpponent": false
+            },
+            {
+              "id": "id_24",
+              "name": "ISTAR Asset",
+              "abbr": "ISTAR",
+              "value": "false",
+              "notes": "FE acts as an ISTAR asset for LOS checks",
+              "showTooltip": false,
+              "showOpponent": false
+            },
+            {
+              "id": "id_25",
+              "name": "C2 Rating",
+              "abbr": "C2",
+              "value": "",
+              "notes": "Command & Control rating for HQs",
+              "showTooltip": false,
+              "showOpponent": false
+            },
+            {
+              "id": "id_26",
+              "name": "Anti-personnel firepower",
+              "abbr": "Apers",
+              "value": "3",
+              "notes": "Attack value against personnel",
+              "showTooltip": true,
+              "showOpponent": false
+            },
+            {
+              "id": "id_27",
+              "name": "Anti-tank firepower",
+              "abbr": "Atk",
+              "value": "0",
+              "notes": "Attack value against armoured vehicles",
+              "showTooltip": true,
+              "showOpponent": false
+            },
+            {
+              "id": "id_28",
+              "name": "Anti-tank firepower type",
+              "abbr": "Atk type",
+              "value": "Normal",
+              "notes": "",
+              "showTooltip": true,
+              "showOpponent": false
+            }
+          ],
+          "movement": [
+            {
+              "id": "id_29",
+              "name": "Max speed",
+              "abbr": "Max",
+              "value": 5,
+              "notes": "",
+              "showTooltip": false,
+              "showOpponent": false
+            },
+            {
+              "id": "id_30",
+              "name": "Easy terrain",
+              "abbr": "Easy",
+              "value": 4,
+              "notes": "",
+              "showTooltip": false,
+              "showOpponent": false
+            },
+            {
+              "id": "id_31",
+              "name": "Moderate terrain",
+              "abbr": "Medium",
+              "value": 2,
+              "notes": "",
+              "showTooltip": false,
+              "showOpponent": false
+            },
+            {
+              "id": "id_32",
+              "name": "Hard terrain",
+              "abbr": "Hard",
+              "value": 0.5,
+              "notes": "",
+              "showTooltip": false,
+              "showOpponent": false
+            },
+            {
+              "id": "id_33",
+              "name": "Impassable terrain",
+              "abbr": "No-go",
+              "value": 0,
+              "notes": "",
+              "showTooltip": false,
+              "showOpponent": false
+            }
+          ],
+          "rangeRings": [
+            {
+              "id": "id_34",
+              "name": "Anti-personnel range",
+              "abbr": "Apers range",
+              "value": 1000,
+              "color": "#d94a4a",
+              "visible": false,
+              "notes": "",
+              "showTooltip": true,
+              "showOpponent": false
+            },
+            {
+              "id": "id_35",
+              "name": "Anti-tank range",
+              "abbr": "Atk range",
+              "value": 0,
+              "color": "#f5a623",
+              "visible": false,
+              "notes": "",
+              "showTooltip": true,
+              "showOpponent": false
+            },
+            {
+              "id": "id_36",
+              "name": "Indirect range",
+              "abbr": "Indirect",
+              "value": 0,
+              "color": "#4a90d9",
+              "visible": false,
+              "notes": "",
+              "showTooltip": false,
+              "showOpponent": false
+            }
+          ]
+        }
+      ],
+      "notes": ""
+    },
+    {
+      "id": "t_armor",
+      "name": "Armor Pl",
+      "type": "armor",
+      "echelon": "platoon",
+      "description": "Armoured platoon",
+      "customSVG": null,
+      "states": [
+        {
+          "id": "id_37",
+          "name": "Combat Ready",
+          "abbr": "Ready",
+          "customSVG": null,
+          "stats": [
+            {
+              "id": "id_38",
+              "name": "Force Element size",
+              "abbr": "FE size",
+              "value": "Platoon",
+              "notes": "Size of the unit",
+              "showTooltip": true,
+              "showOpponent": false
+            },
+            {
+              "id": "id_39",
+              "name": "Force Element type",
+              "abbr": "FE type",
+              "value": "Tracked",
+              "notes": "Type of unit",
+              "showTooltip": true,
+              "showOpponent": false
+            },
+            {
+              "id": "id_40",
+              "name": "Resilience",
+              "abbr": "Resilience",
+              "value": "4",
+              "notes": "FE's ability to withstand Hits",
+              "showTooltip": true,
+              "showOpponent": false
+            },
+            {
+              "id": "id_41",
+              "name": "Troop Quality",
+              "abbr": "TQ",
+              "value": "4",
+              "notes": "FE's training, cohesion & will to fight",
+              "showTooltip": true,
+              "showOpponent": false
+            },
+            {
+              "id": "id_42",
+              "name": "ISTAR Asset",
+              "abbr": "ISTAR",
+              "value": "false",
+              "notes": "FE acts as an ISTAR asset for LOS checks",
+              "showTooltip": false,
+              "showOpponent": false
+            },
+            {
+              "id": "id_43",
+              "name": "C2 Rating",
+              "abbr": "C2",
+              "value": "",
+              "notes": "Command & Control rating for HQs",
+              "showTooltip": false,
+              "showOpponent": false
+            },
+            {
+              "id": "id_44",
+              "name": "Anti-personnel firepower",
+              "abbr": "Apers",
+              "value": "3",
+              "notes": "Attack value against personnel",
+              "showTooltip": true,
+              "showOpponent": false
+            },
+            {
+              "id": "id_45",
+              "name": "Anti-tank firepower",
+              "abbr": "Atk",
+              "value": "5",
+              "notes": "Attack value against armoured vehicles",
+              "showTooltip": true,
+              "showOpponent": false
+            },
+            {
+              "id": "id_46",
+              "name": "Anti-tank firepower type",
+              "abbr": "Atk type",
+              "value": "Normal",
+              "notes": "",
+              "showTooltip": true,
+              "showOpponent": false
+            }
+          ],
+          "movement": [
+            {
+              "id": "id_47",
+              "name": "Max speed",
+              "abbr": "Max",
+              "value": 9,
+              "notes": "",
+              "showTooltip": false,
+              "showOpponent": false
+            },
+            {
+              "id": "id_48",
+              "name": "Easy terrain",
+              "abbr": "Easy",
+              "value": 6,
+              "notes": "",
+              "showTooltip": false,
+              "showOpponent": false
+            },
+            {
+              "id": "id_49",
+              "name": "Moderate terrain",
+              "abbr": "Medium",
+              "value": 3,
+              "notes": "",
+              "showTooltip": false,
+              "showOpponent": false
+            },
+            {
+              "id": "id_50",
+              "name": "Hard terrain",
+              "abbr": "Hard",
+              "value": 0.5,
+              "notes": "",
+              "showTooltip": false,
+              "showOpponent": false
+            },
+            {
+              "id": "id_51",
+              "name": "Impassable terrain",
+              "abbr": "No-go",
+              "value": 0,
+              "notes": "",
+              "showTooltip": false,
+              "showOpponent": false
+            }
+          ],
+          "rangeRings": [
+            {
+              "id": "id_52",
+              "name": "Anti-personnel range",
+              "abbr": "Apers range",
+              "value": 2000,
+              "color": "#d94a4a",
+              "visible": false,
+              "notes": "",
+              "showTooltip": true,
+              "showOpponent": false
+            },
+            {
+              "id": "id_53",
+              "name": "Anti-tank range",
+              "abbr": "Atk range",
+              "value": 3000,
+              "color": "#f5a623",
+              "visible": false,
+              "notes": "",
+              "showTooltip": true,
+              "showOpponent": false
+            },
+            {
+              "id": "id_54",
+              "name": "Indirect range",
+              "abbr": "Indirect",
+              "value": 0,
+              "color": "#4a90d9",
+              "visible": false,
+              "notes": "",
+              "showTooltip": false,
+              "showOpponent": false
+            }
+          ]
+        }
+      ],
+      "notes": ""
+    },
+    {
+      "id": "t_arty",
+      "name": "Artillery Section",
+      "type": "artillery",
+      "echelon": "section",
+      "description": "Artillery section",
+      "customSVG": null,
+      "states": [
+        {
+          "id": "id_55",
+          "name": "Combat Ready",
+          "abbr": "Ready",
+          "customSVG": null,
+          "stats": [
+            {
+              "id": "id_56",
+              "name": "Force Element size",
+              "abbr": "FE size",
+              "value": "Section",
+              "notes": "Size of the unit",
+              "showTooltip": true,
+              "showOpponent": false
+            },
+            {
+              "id": "id_57",
+              "name": "Force Element type",
+              "abbr": "FE type",
+              "value": "Tracked",
+              "notes": "Type of unit",
+              "showTooltip": true,
+              "showOpponent": false
+            },
+            {
+              "id": "id_58",
+              "name": "Resilience",
+              "abbr": "Resilience",
+              "value": "2",
+              "notes": "FE's ability to withstand Hits",
+              "showTooltip": true,
+              "showOpponent": false
+            },
+            {
+              "id": "id_59",
+              "name": "Troop Quality",
+              "abbr": "TQ",
+              "value": "4",
+              "notes": "FE's training, cohesion & will to fight",
+              "showTooltip": true,
+              "showOpponent": false
+            },
+            {
+              "id": "id_60",
+              "name": "ISTAR Asset",
+              "abbr": "ISTAR",
+              "value": "false",
+              "notes": "FE acts as an ISTAR asset for LOS checks",
+              "showTooltip": false,
+              "showOpponent": false
+            },
+            {
+              "id": "id_61",
+              "name": "C2 Rating",
+              "abbr": "C2",
+              "value": "",
+              "notes": "Command & Control rating for HQs",
+              "showTooltip": false,
+              "showOpponent": false
+            },
+            {
+              "id": "id_62",
+              "name": "Anti-personnel firepower",
+              "abbr": "Apers",
+              "value": "1",
+              "notes": "Attack value against personnel",
+              "showTooltip": true,
+              "showOpponent": false
+            },
+            {
+              "id": "id_63",
+              "name": "Anti-tank firepower",
+              "abbr": "Atk",
+              "value": "0",
+              "notes": "Attack value against armoured vehicles",
+              "showTooltip": true,
+              "showOpponent": false
+            },
+            {
+              "id": "id_64",
+              "name": "Anti-tank firepower type",
+              "abbr": "Atk type",
+              "value": "Normal",
+              "notes": "",
+              "showTooltip": true,
+              "showOpponent": false
+            }
+          ],
+          "movement": [
+            {
+              "id": "id_65",
+              "name": "Max speed",
+              "abbr": "Max",
+              "value": 6,
+              "notes": "",
+              "showTooltip": false,
+              "showOpponent": false
+            },
+            {
+              "id": "id_66",
+              "name": "Easy terrain",
+              "abbr": "Easy",
+              "value": 3,
+              "notes": "",
+              "showTooltip": false,
+              "showOpponent": false
+            },
+            {
+              "id": "id_67",
+              "name": "Moderate terrain",
+              "abbr": "Medium",
+              "value": 1,
+              "notes": "",
+              "showTooltip": false,
+              "showOpponent": false
+            },
+            {
+              "id": "id_68",
+              "name": "Hard terrain",
+              "abbr": "Hard",
+              "value": 0,
+              "notes": "",
+              "showTooltip": false,
+              "showOpponent": false
+            },
+            {
+              "id": "id_69",
+              "name": "Impassable terrain",
+              "abbr": "No-go",
+              "value": 0,
+              "notes": "",
+              "showTooltip": false,
+              "showOpponent": false
+            }
+          ],
+          "rangeRings": [
+            {
+              "id": "id_70",
+              "name": "Anti-personnel range",
+              "abbr": "Apers range",
+              "value": 0,
+              "color": "#d94a4a",
+              "visible": false,
+              "notes": "",
+              "showTooltip": true,
+              "showOpponent": false
+            },
+            {
+              "id": "id_71",
+              "name": "Anti-tank range",
+              "abbr": "Atk range",
+              "value": 0,
+              "color": "#f5a623",
+              "visible": false,
+              "notes": "",
+              "showTooltip": true,
+              "showOpponent": false
+            },
+            {
+              "id": "id_72",
+              "name": "Indirect range",
+              "abbr": "Indirect",
+              "value": 7000,
+              "color": "#4a90d9",
+              "visible": false,
+              "notes": "",
+              "showTooltip": false,
+              "showOpponent": false
+            }
+          ]
+        }
+      ],
+      "notes": ""
+    },
+    {
+      "id": "t_uav",
+      "name": "UAV",
+      "type": "uav",
+      "echelon": "none",
+      "description": "Unmanned aerial vehicle",
+      "customSVG": null,
+      "states": [
+        {
+          "id": "id_73",
+          "name": "Airborne",
+          "abbr": "Air",
+          "customSVG": null,
+          "stats": [
+            {
+              "id": "id_74",
+              "name": "Force Element size",
+              "abbr": "FE size",
+              "value": "",
+              "notes": "Size of the unit",
+              "showTooltip": true,
+              "showOpponent": false
+            },
+            {
+              "id": "id_75",
+              "name": "Force Element type",
+              "abbr": "FE type",
+              "value": "Air",
+              "notes": "Type of unit",
+              "showTooltip": true,
+              "showOpponent": false
+            },
+            {
+              "id": "id_76",
+              "name": "Resilience",
+              "abbr": "Resilience",
+              "value": "1",
+              "notes": "FE's ability to withstand Hits",
+              "showTooltip": true,
+              "showOpponent": false
+            },
+            {
+              "id": "id_77",
+              "name": "Troop Quality",
+              "abbr": "TQ",
+              "value": "",
+              "notes": "FE's training, cohesion & will to fight",
+              "showTooltip": true,
+              "showOpponent": false
+            },
+            {
+              "id": "id_78",
+              "name": "ISTAR Asset",
+              "abbr": "ISTAR",
+              "value": "true",
+              "notes": "FE acts as an ISTAR asset for LOS checks",
+              "showTooltip": false,
+              "showOpponent": false
+            },
+            {
+              "id": "id_79",
+              "name": "C2 Rating",
+              "abbr": "C2",
+              "value": "",
+              "notes": "Command & Control rating for HQs",
+              "showTooltip": false,
+              "showOpponent": false
+            },
+            {
+              "id": "id_80",
+              "name": "Anti-personnel firepower",
+              "abbr": "Apers",
+              "value": "0",
+              "notes": "Attack value against personnel",
+              "showTooltip": true,
+              "showOpponent": false
+            },
+            {
+              "id": "id_81",
+              "name": "Anti-tank firepower",
+              "abbr": "Atk",
+              "value": "0",
+              "notes": "Attack value against armoured vehicles",
+              "showTooltip": true,
+              "showOpponent": false
+            },
+            {
+              "id": "id_82",
+              "name": "Anti-tank firepower type",
+              "abbr": "Atk type",
+              "value": "",
+              "notes": "",
+              "showTooltip": true,
+              "showOpponent": false
+            }
+          ],
+          "movement": [
+            {
+              "id": "id_83",
+              "name": "Max speed",
+              "abbr": "Max",
+              "value": 9,
+              "notes": "",
+              "showTooltip": false,
+              "showOpponent": false
+            },
+            {
+              "id": "id_84",
+              "name": "Easy terrain",
+              "abbr": "Easy",
+              "value": 9,
+              "notes": "",
+              "showTooltip": false,
+              "showOpponent": false
+            },
+            {
+              "id": "id_85",
+              "name": "Moderate terrain",
+              "abbr": "Medium",
+              "value": 9,
+              "notes": "",
+              "showTooltip": false,
+              "showOpponent": false
+            },
+            {
+              "id": "id_86",
+              "name": "Hard terrain",
+              "abbr": "Hard",
+              "value": 9,
+              "notes": "",
+              "showTooltip": false,
+              "showOpponent": false
+            },
+            {
+              "id": "id_87",
+              "name": "Impassable terrain",
+              "abbr": "No-go",
+              "value": 0,
+              "notes": "",
+              "showTooltip": false,
+              "showOpponent": false
+            }
+          ],
+          "rangeRings": [
+            {
+              "id": "id_88",
+              "name": "Anti-personnel range",
+              "abbr": "Apers range",
+              "value": 0,
+              "color": "#d94a4a",
+              "visible": false,
+              "notes": "",
+              "showTooltip": true,
+              "showOpponent": false
+            },
+            {
+              "id": "id_89",
+              "name": "Anti-tank range",
+              "abbr": "Atk range",
+              "value": 0,
+              "color": "#f5a623",
+              "visible": false,
+              "notes": "",
+              "showTooltip": true,
+              "showOpponent": false
+            },
+            {
+              "id": "id_90",
+              "name": "Indirect range",
+              "abbr": "Indirect",
+              "value": 0,
+              "color": "#4a90d9",
+              "visible": false,
+              "notes": "",
+              "showTooltip": false,
+              "showOpponent": false
+            }
+          ]
+        }
+      ],
+      "notes": ""
+    },
+    {
+      "id": "t_fpv",
+      "name": "FPV Drone Team",
+      "type": "fpv",
+      "echelon": "none",
+      "description": "FPV drone operator team",
+      "customSVG": null,
+      "states": [
+        {
+          "id": "id_91",
+          "name": "Operating",
+          "abbr": "Op",
+          "customSVG": null,
+          "stats": [
+            {
+              "id": "id_92",
+              "name": "Force Element size",
+              "abbr": "FE size",
+              "value": "Team",
+              "notes": "Size of the unit",
+              "showTooltip": true,
+              "showOpponent": false
+            },
+            {
+              "id": "id_93",
+              "name": "Force Element type",
+              "abbr": "FE type",
+              "value": "Foot",
+              "notes": "Type of unit",
+              "showTooltip": true,
+              "showOpponent": false
+            },
+            {
+              "id": "id_94",
+              "name": "Resilience",
+              "abbr": "Resilience",
+              "value": "1",
+              "notes": "FE's ability to withstand Hits",
+              "showTooltip": true,
+              "showOpponent": false
+            },
+            {
+              "id": "id_95",
+              "name": "Troop Quality",
+              "abbr": "TQ",
+              "value": "4",
+              "notes": "FE's training, cohesion & will to fight",
+              "showTooltip": true,
+              "showOpponent": false
+            },
+            {
+              "id": "id_96",
+              "name": "ISTAR Asset",
+              "abbr": "ISTAR",
+              "value": "false",
+              "notes": "FE acts as an ISTAR asset for LOS checks",
+              "showTooltip": false,
+              "showOpponent": false
+            },
+            {
+              "id": "id_97",
+              "name": "C2 Rating",
+              "abbr": "C2",
+              "value": "",
+              "notes": "Command & Control rating for HQs",
+              "showTooltip": false,
+              "showOpponent": false
+            },
+            {
+              "id": "id_98",
+              "name": "Anti-personnel firepower",
+              "abbr": "Apers",
+              "value": "0",
+              "notes": "Attack value against personnel",
+              "showTooltip": true,
+              "showOpponent": false
+            },
+            {
+              "id": "id_99",
+              "name": "Anti-tank firepower",
+              "abbr": "Atk",
+              "value": "4",
+              "notes": "Attack value against armoured vehicles",
+              "showTooltip": true,
+              "showOpponent": false
+            },
+            {
+              "id": "id_100",
+              "name": "Anti-tank firepower type",
+              "abbr": "Atk type",
+              "value": "Normal",
+              "notes": "",
+              "showTooltip": true,
+              "showOpponent": false
+            }
+          ],
+          "movement": [
+            {
+              "id": "id_101",
+              "name": "Max speed",
+              "abbr": "Max",
+              "value": 5,
+              "notes": "",
+              "showTooltip": false,
+              "showOpponent": false
+            },
+            {
+              "id": "id_102",
+              "name": "Easy terrain",
+              "abbr": "Easy",
+              "value": 3,
+              "notes": "",
+              "showTooltip": false,
+              "showOpponent": false
+            },
+            {
+              "id": "id_103",
+              "name": "Moderate terrain",
+              "abbr": "Medium",
+              "value": 1,
+              "notes": "",
+              "showTooltip": false,
+              "showOpponent": false
+            },
+            {
+              "id": "id_104",
+              "name": "Hard terrain",
+              "abbr": "Hard",
+              "value": 0,
+              "notes": "",
+              "showTooltip": false,
+              "showOpponent": false
+            },
+            {
+              "id": "id_105",
+              "name": "Impassable terrain",
+              "abbr": "No-go",
+              "value": 0,
+              "notes": "",
+              "showTooltip": false,
+              "showOpponent": false
+            }
+          ],
+          "rangeRings": [
+            {
+              "id": "id_106",
+              "name": "Anti-personnel range",
+              "abbr": "Apers range",
+              "value": 0,
+              "color": "#d94a4a",
+              "visible": false,
+              "notes": "",
+              "showTooltip": true,
+              "showOpponent": false
+            },
+            {
+              "id": "id_107",
+              "name": "Anti-tank range",
+              "abbr": "Atk range",
+              "value": 2000,
+              "color": "#f5a623",
+              "visible": false,
+              "notes": "",
+              "showTooltip": true,
+              "showOpponent": false
+            },
+            {
+              "id": "id_108",
+              "name": "Indirect range",
+              "abbr": "Indirect",
+              "value": 0,
+              "color": "#4a90d9",
+              "visible": false,
+              "notes": "",
+              "showTooltip": false,
+              "showOpponent": false
+            }
+          ]
+        }
+      ],
+      "notes": ""
+    },
+    {
+      "id": "t_recon_sec",
+      "name": "Recon Section",
+      "type": "recon",
+      "echelon": "section",
+      "description": "Reconnaissance section",
+      "customSVG": null,
+      "states": [
+        {
+          "id": "id_109",
+          "name": "Combat Ready",
+          "abbr": "Ready",
+          "customSVG": null,
+          "stats": [
+            {
+              "id": "id_110",
+              "name": "Force Element size",
+              "abbr": "FE size",
+              "value": "Section",
+              "notes": "Size of the unit",
+              "showTooltip": true,
+              "showOpponent": false
+            },
+            {
+              "id": "id_111",
+              "name": "Force Element type",
+              "abbr": "FE type",
+              "value": "Wheeled",
+              "notes": "Type of unit",
+              "showTooltip": true,
+              "showOpponent": false
+            },
+            {
+              "id": "id_112",
+              "name": "Resilience",
+              "abbr": "Resilience",
+              "value": "2",
+              "notes": "FE's ability to withstand Hits",
+              "showTooltip": true,
+              "showOpponent": false
+            },
+            {
+              "id": "id_113",
+              "name": "Troop Quality",
+              "abbr": "TQ",
+              "value": "5",
+              "notes": "FE's training, cohesion & will to fight",
+              "showTooltip": true,
+              "showOpponent": false
+            },
+            {
+              "id": "id_114",
+              "name": "ISTAR Asset",
+              "abbr": "ISTAR",
+              "value": "true",
+              "notes": "FE acts as an ISTAR asset for LOS checks",
+              "showTooltip": false,
+              "showOpponent": false
+            },
+            {
+              "id": "id_115",
+              "name": "C2 Rating",
+              "abbr": "C2",
+              "value": "",
+              "notes": "Command & Control rating for HQs",
+              "showTooltip": false,
+              "showOpponent": false
+            },
+            {
+              "id": "id_116",
+              "name": "Anti-personnel firepower",
+              "abbr": "Apers",
+              "value": "2",
+              "notes": "Attack value against personnel",
+              "showTooltip": true,
+              "showOpponent": false
+            },
+            {
+              "id": "id_117",
+              "name": "Anti-tank firepower",
+              "abbr": "Atk",
+              "value": "1",
+              "notes": "Attack value against armoured vehicles",
+              "showTooltip": true,
+              "showOpponent": false
+            },
+            {
+              "id": "id_118",
+              "name": "Anti-tank firepower type",
+              "abbr": "Atk type",
+              "value": "Normal",
+              "notes": "",
+              "showTooltip": true,
+              "showOpponent": false
+            }
+          ],
+          "movement": [
+            {
+              "id": "id_119",
+              "name": "Max speed",
+              "abbr": "Max",
+              "value": 9,
+              "notes": "",
+              "showTooltip": false,
+              "showOpponent": false
+            },
+            {
+              "id": "id_120",
+              "name": "Easy terrain",
+              "abbr": "Easy",
+              "value": 6,
+              "notes": "",
+              "showTooltip": false,
+              "showOpponent": false
+            },
+            {
+              "id": "id_121",
+              "name": "Moderate terrain",
+              "abbr": "Medium",
+              "value": 3,
+              "notes": "",
+              "showTooltip": false,
+              "showOpponent": false
+            },
+            {
+              "id": "id_122",
+              "name": "Hard terrain",
+              "abbr": "Hard",
+              "value": 0.5,
+              "notes": "",
+              "showTooltip": false,
+              "showOpponent": false
+            },
+            {
+              "id": "id_123",
+              "name": "Impassable terrain",
+              "abbr": "No-go",
+              "value": 0,
+              "notes": "",
+              "showTooltip": false,
+              "showOpponent": false
+            }
+          ],
+          "rangeRings": [
+            {
+              "id": "id_124",
+              "name": "Anti-personnel range",
+              "abbr": "Apers range",
+              "value": 1000,
+              "color": "#d94a4a",
+              "visible": false,
+              "notes": "",
+              "showTooltip": true,
+              "showOpponent": false
+            },
+            {
+              "id": "id_125",
+              "name": "Anti-tank range",
+              "abbr": "Atk range",
+              "value": 1000,
+              "color": "#f5a623",
+              "visible": false,
+              "notes": "",
+              "showTooltip": true,
+              "showOpponent": false
+            },
+            {
+              "id": "id_126",
+              "name": "Indirect range",
+              "abbr": "Indirect",
+              "value": 0,
+              "color": "#4a90d9",
+              "visible": false,
+              "notes": "",
+              "showTooltip": false,
+              "showOpponent": false
+            }
+          ]
+        }
+      ],
+      "notes": ""
+    }
+  ],
+  "markerTemplates": [
+    {
+      "id": "m_smoke",
+      "name": "Smoke",
+      "glyph": "☁",
+      "color": "#cccccc",
+      "defaultRings": [
+        {
+          "name": "Effect",
+          "radius": 300,
+          "color": "#aaaaaa"
+        }
+      ],
+      "fields": [
+        {
+          "name": "Munition",
+          "value": "HC"
+        },
+        {
+          "name": "Duration (min)",
+          "value": "10"
+        },
+        {
+          "name": "Density",
+          "value": "Heavy"
+        }
+      ]
+    },
+    {
+      "id": "m_fire_mission",
+      "name": "Fire Mission",
+      "glyph": "💥",
+      "color": "#f5a623",
+      "defaultRings": [
+        {
+          "name": "Effect",
+          "radius": 300,
+          "color": "#f5a623"
+        }
+      ],
+      "fields": [
+        {
+          "name": "Status",
+          "value": "Planned"
+        },
+        {
+          "name": "Firing unit",
+          "value": ""
+        },
+        {
+          "name": "Rounds",
+          "value": "18"
+        },
+        {
+          "name": "Munition",
+          "value": "HE"
+        },
+        {
+          "name": "TOT",
+          "value": ""
+        },
+        {
+          "name": "Duration",
+          "value": ""
+        }
+      ]
+    },
+    {
+      "id": "m_target",
+      "name": "Target",
+      "glyph": "⊕",
+      "color": "#e94560",
+      "defaultRings": [],
+      "fields": [
+        {
+          "name": "Description",
+          "value": ""
+        },
+        {
+          "name": "Priority",
+          "value": "Medium"
+        },
+        {
+          "name": "Type",
+          "value": ""
+        }
+      ]
+    },
+    {
+      "id": "m_etx",
+      "name": "ETX (Electronic Transmission)",
+      "glyph": "📡",
+      "color": "#b47ed9",
+      "defaultRings": [
+        {
+          "name": "Locate error",
+          "radius": 500,
+          "color": "#b47ed9"
+        }
+      ],
+      "fields": [
+        {
+          "name": "Time",
+          "value": ""
+        },
+        {
+          "name": "Frequency",
+          "value": ""
+        },
+        {
+          "name": "Emitter type",
+          "value": ""
+        },
+        {
+          "name": "Confidence",
+          "value": "Medium"
+        }
+      ]
+    },
+    {
+      "id": "m_obj",
+      "name": "Objective",
+      "glyph": "OBJ",
+      "color": "#4ecca3",
+      "defaultRings": [],
+      "fields": [
+        {
+          "name": "Code name",
+          "value": ""
+        },
+        {
+          "name": "Priority",
+          "value": "Primary"
+        }
+      ]
+    }
+  ],
+  "symbolTemplates": [
+    {
+      "id": "s_bridge",
+      "name": "Bridge",
+      "category": "terrain",
+      "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"28\" height=\"28\" viewBox=\"0 0 28 28\"><circle cx=\"14\" cy=\"14\" r=\"10\" fill=\"#fff\" stroke=\"#000\" stroke-width=\"2\"/><line x1=\"6\" y1=\"11\" x2=\"22\" y2=\"11\" stroke=\"#000\" stroke-width=\"2\"/><line x1=\"6\" y1=\"17\" x2=\"22\" y2=\"17\" stroke=\"#000\" stroke-width=\"2\"/></svg>"
+    },
+    {
+      "id": "s_bridge_cut",
+      "name": "Bridge (cut)",
+      "category": "terrain",
+      "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"28\" height=\"28\" viewBox=\"0 0 28 28\"><circle cx=\"14\" cy=\"14\" r=\"10\" fill=\"#fff\" stroke=\"#000\" stroke-width=\"2\"/><line x1=\"6\" y1=\"11\" x2=\"22\" y2=\"11\" stroke=\"#000\" stroke-width=\"2\"/><line x1=\"6\" y1=\"17\" x2=\"22\" y2=\"17\" stroke=\"#000\" stroke-width=\"2\"/><line x1=\"4\" y1=\"4\" x2=\"24\" y2=\"24\" stroke=\"#d94a4a\" stroke-width=\"3\"/></svg>"
+    },
+    {
+      "id": "s_tunnel",
+      "name": "Tunnel",
+      "category": "terrain",
+      "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"28\" height=\"28\" viewBox=\"0 0 28 28\"><path d=\"M4 22 L4 14 Q14 4 24 14 L24 22\" fill=\"#fff\" stroke=\"#000\" stroke-width=\"2\"/></svg>"
+    },
+    {
+      "id": "s_ford",
+      "name": "Ford",
+      "category": "terrain",
+      "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"28\" height=\"28\" viewBox=\"0 0 28 28\"><path d=\"M4 14 Q9 8 14 14 T24 14\" fill=\"none\" stroke=\"#000\" stroke-width=\"2\"/><path d=\"M4 20 Q9 14 14 20 T24 20\" fill=\"none\" stroke=\"#000\" stroke-width=\"2\"/></svg>"
+    },
+    {
+      "id": "s_defile",
+      "name": "Defile",
+      "category": "terrain",
+      "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"30\" height=\"20\" viewBox=\"0 0 30 20\"><path d=\"M0 2 L10 10 L0 18\" fill=\"none\" stroke=\"#000\" stroke-width=\"2\"/><path d=\"M30 2 L20 10 L30 18\" fill=\"none\" stroke=\"#000\" stroke-width=\"2\"/></svg>"
+    },
+    {
+      "id": "s_building",
+      "name": "Building",
+      "category": "terrain",
+      "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"24\" height=\"24\" viewBox=\"0 0 24 24\"><rect x=\"4\" y=\"4\" width=\"16\" height=\"16\" fill=\"#000\" stroke=\"#000\" stroke-width=\"1\"/></svg>"
+    },
+    {
+      "id": "s_height",
+      "name": "Height Point",
+      "category": "terrain",
+      "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"24\" height=\"24\" viewBox=\"0 0 24 24\"><circle cx=\"12\" cy=\"12\" r=\"3\" fill=\"#000\"/></svg>"
+    },
+    {
+      "id": "s_defensive",
+      "name": "Defensive Position",
+      "category": "tactical",
+      "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"32\" height=\"20\" viewBox=\"0 0 32 20\"><path d=\"M4 18 L4 8 Q16 -4 28 8 L28 18\" fill=\"none\" stroke=\"#000\" stroke-width=\"2.5\"/></svg>"
+    },
+    {
+      "id": "s_battle_pos",
+      "name": "Battle Position",
+      "category": "tactical",
+      "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"32\" height=\"18\" viewBox=\"0 0 32 18\"><path d=\"M2 16 C 2 2, 30 2, 30 16\" fill=\"none\" stroke=\"#000\" stroke-width=\"2.5\"/><line x1=\"2\" y1=\"16\" x2=\"30\" y2=\"16\" stroke=\"#000\" stroke-width=\"1.5\" stroke-dasharray=\"2,2\"/></svg>"
+    },
+    {
+      "id": "s_strongpoint",
+      "name": "Strongpoint",
+      "category": "tactical",
+      "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"28\" height=\"28\" viewBox=\"0 0 28 28\"><rect x=\"4\" y=\"4\" width=\"20\" height=\"20\" fill=\"none\" stroke=\"#000\" stroke-width=\"2\"/><line x1=\"4\" y1=\"4\" x2=\"24\" y2=\"24\" stroke=\"#000\" stroke-width=\"2\"/><line x1=\"24\" y1=\"4\" x2=\"4\" y2=\"24\" stroke=\"#000\" stroke-width=\"2\"/></svg>"
+    },
+    {
+      "id": "s_op",
+      "name": "Observation Post",
+      "category": "tactical",
+      "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"28\" height=\"28\" viewBox=\"0 0 28 28\"><circle cx=\"14\" cy=\"14\" r=\"8\" fill=\"none\" stroke=\"#000\" stroke-width=\"2\"/><circle cx=\"14\" cy=\"14\" r=\"3\" fill=\"#000\"/></svg>"
+    },
+    {
+      "id": "s_cp",
+      "name": "Command Post",
+      "category": "tactical",
+      "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"30\" height=\"22\" viewBox=\"0 0 30 22\"><line x1=\"4\" y1=\"20\" x2=\"4\" y2=\"4\" stroke=\"#000\" stroke-width=\"2\"/><polygon points=\"4,4 18,4 14,10 18,16 4,16\" fill=\"#000\"/></svg>"
+    },
+    {
+      "id": "s_aid",
+      "name": "Aid Station",
+      "category": "tactical",
+      "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"24\" height=\"24\" viewBox=\"0 0 24 24\"><rect x=\"2\" y=\"2\" width=\"20\" height=\"20\" fill=\"#fff\" stroke=\"#000\" stroke-width=\"2\"/><path d=\"M10 6 L14 6 L14 10 L18 10 L18 14 L14 14 L14 18 L10 18 L10 14 L6 14 L6 10 L10 10 Z\" fill=\"#d94a4a\"/></svg>"
+    },
+    {
+      "id": "s_ammo",
+      "name": "Ammo Point",
+      "category": "tactical",
+      "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"22\" height=\"22\" viewBox=\"0 0 22 22\"><rect x=\"2\" y=\"2\" width=\"18\" height=\"18\" fill=\"#fff\" stroke=\"#000\" stroke-width=\"2\"/><text x=\"11\" y=\"16\" text-anchor=\"middle\" font-size=\"13\" font-family=\"Arial\" font-weight=\"700\" fill=\"#000\">A</text></svg>"
+    },
+    {
+      "id": "s_supply",
+      "name": "Supply Point",
+      "category": "tactical",
+      "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"22\" height=\"22\" viewBox=\"0 0 22 22\"><rect x=\"2\" y=\"2\" width=\"18\" height=\"18\" fill=\"#fff\" stroke=\"#000\" stroke-width=\"2\"/><text x=\"11\" y=\"16\" text-anchor=\"middle\" font-size=\"13\" font-family=\"Arial\" font-weight=\"700\" fill=\"#000\">S</text></svg>"
+    },
+    {
+      "id": "s_assembly",
+      "name": "Assembly Area",
+      "category": "tactical",
+      "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"30\" height=\"24\" viewBox=\"0 0 30 24\"><ellipse cx=\"15\" cy=\"12\" rx=\"13\" ry=\"9\" fill=\"none\" stroke=\"#000\" stroke-width=\"2\"/><text x=\"15\" y=\"16\" text-anchor=\"middle\" font-size=\"11\" font-family=\"Arial\" font-weight=\"700\" fill=\"#000\">AA</text></svg>"
+    },
+    {
+      "id": "s_lz",
+      "name": "Landing Zone",
+      "category": "tactical",
+      "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"26\" height=\"26\" viewBox=\"0 0 26 26\"><circle cx=\"13\" cy=\"13\" r=\"11\" fill=\"none\" stroke=\"#000\" stroke-width=\"2\"/><text x=\"13\" y=\"17\" text-anchor=\"middle\" font-size=\"11\" font-family=\"Arial\" font-weight=\"700\" fill=\"#000\">LZ</text></svg>"
+    },
+    {
+      "id": "s_dz",
+      "name": "Drop Zone",
+      "category": "tactical",
+      "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"26\" height=\"26\" viewBox=\"0 0 26 26\"><circle cx=\"13\" cy=\"13\" r=\"11\" fill=\"none\" stroke=\"#000\" stroke-width=\"2\"/><text x=\"13\" y=\"17\" text-anchor=\"middle\" font-size=\"11\" font-family=\"Arial\" font-weight=\"700\" fill=\"#000\">DZ</text></svg>"
+    },
+    {
+      "id": "s_destroyed",
+      "name": "Destroyed",
+      "category": "tactical",
+      "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"26\" height=\"26\" viewBox=\"0 0 26 26\"><line x1=\"4\" y1=\"4\" x2=\"22\" y2=\"22\" stroke=\"#d94a4a\" stroke-width=\"4\"/><line x1=\"22\" y1=\"4\" x2=\"4\" y2=\"22\" stroke=\"#d94a4a\" stroke-width=\"4\"/></svg>"
+    },
+    {
+      "id": "s_minefield",
+      "name": "Minefield (generic)",
+      "category": "obstacle",
+      "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"30\" height=\"20\" viewBox=\"0 0 30 20\"><circle cx=\"6\" cy=\"10\" r=\"3\" fill=\"#000\"/><circle cx=\"15\" cy=\"10\" r=\"3\" fill=\"#000\"/><circle cx=\"24\" cy=\"10\" r=\"3\" fill=\"#000\"/></svg>"
+    },
+    {
+      "id": "s_minefield_at",
+      "name": "Minefield (AT)",
+      "category": "obstacle",
+      "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"30\" height=\"20\" viewBox=\"0 0 30 20\"><polygon points=\"6,13 9,7 12,13\" fill=\"#000\"/><polygon points=\"15,13 18,7 21,13\" fill=\"#000\"/><polygon points=\"24,13 27,7 30,13\" fill=\"#000\"/></svg>"
+    },
+    {
+      "id": "s_minefield_ap",
+      "name": "Minefield (AP)",
+      "category": "obstacle",
+      "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"30\" height=\"20\" viewBox=\"0 0 30 20\"><circle cx=\"5\" cy=\"10\" r=\"2\" fill=\"#000\"/><circle cx=\"11\" cy=\"10\" r=\"2\" fill=\"#000\"/><circle cx=\"17\" cy=\"10\" r=\"2\" fill=\"#000\"/><circle cx=\"23\" cy=\"10\" r=\"2\" fill=\"#000\"/><circle cx=\"29\" cy=\"10\" r=\"1.5\" fill=\"#000\"/></svg>"
+    },
+    {
+      "id": "s_trench",
+      "name": "Trench line",
+      "category": "obstacle",
+      "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"40\" height=\"14\" viewBox=\"0 0 40 14\"><path d=\"M0 8 L4 8 L6 2 L10 8 L14 2 L18 8 L22 2 L26 8 L30 2 L34 8 L38 2 L40 8\" fill=\"none\" stroke=\"#000\" stroke-width=\"2\"/></svg>"
+    },
+    {
+      "id": "s_at_ditch",
+      "name": "Anti-Tank Ditch",
+      "category": "obstacle",
+      "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"40\" height=\"14\" viewBox=\"0 0 40 14\"><path d=\"M0 4 L6 4 L10 10 L14 4 L20 4 L24 10 L28 4 L34 4 L38 10 L40 10\" fill=\"none\" stroke=\"#000\" stroke-width=\"2\"/></svg>"
+    },
+    {
+      "id": "s_wire_single",
+      "name": "Wire (single)",
+      "category": "obstacle",
+      "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"40\" height=\"12\" viewBox=\"0 0 40 12\"><line x1=\"0\" y1=\"6\" x2=\"40\" y2=\"6\" stroke=\"#000\" stroke-width=\"1.5\"/><line x1=\"4\" y1=\"2\" x2=\"4\" y2=\"10\" stroke=\"#000\" stroke-width=\"1.5\"/><line x1=\"12\" y1=\"2\" x2=\"12\" y2=\"10\" stroke=\"#000\" stroke-width=\"1.5\"/><line x1=\"20\" y1=\"2\" x2=\"20\" y2=\"10\" stroke=\"#000\" stroke-width=\"1.5\"/><line x1=\"28\" y1=\"2\" x2=\"28\" y2=\"10\" stroke=\"#000\" stroke-width=\"1.5\"/><line x1=\"36\" y1=\"2\" x2=\"36\" y2=\"10\" stroke=\"#000\" stroke-width=\"1.5\"/></svg>"
+    },
+    {
+      "id": "s_wire_double",
+      "name": "Wire (double)",
+      "category": "obstacle",
+      "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"40\" height=\"16\" viewBox=\"0 0 40 16\"><line x1=\"0\" y1=\"4\" x2=\"40\" y2=\"4\" stroke=\"#000\" stroke-width=\"1.5\"/><line x1=\"0\" y1=\"12\" x2=\"40\" y2=\"12\" stroke=\"#000\" stroke-width=\"1.5\"/><line x1=\"6\" y1=\"0\" x2=\"6\" y2=\"16\" stroke=\"#000\" stroke-width=\"1.5\"/><line x1=\"16\" y1=\"0\" x2=\"16\" y2=\"16\" stroke=\"#000\" stroke-width=\"1.5\"/><line x1=\"26\" y1=\"0\" x2=\"26\" y2=\"16\" stroke=\"#000\" stroke-width=\"1.5\"/><line x1=\"36\" y1=\"0\" x2=\"36\" y2=\"16\" stroke=\"#000\" stroke-width=\"1.5\"/></svg>"
+    },
+    {
+      "id": "s_dragons_teeth",
+      "name": "Dragon's Teeth",
+      "category": "obstacle",
+      "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"40\" height=\"14\" viewBox=\"0 0 40 14\"><polygon points=\"2,12 5,4 8,12\" fill=\"#000\"/><polygon points=\"10,12 13,4 16,12\" fill=\"#000\"/><polygon points=\"18,12 21,4 24,12\" fill=\"#000\"/><polygon points=\"26,12 29,4 32,12\" fill=\"#000\"/><polygon points=\"34,12 37,4 40,12\" fill=\"#000\"/></svg>"
+    },
+    {
+      "id": "s_roadblock",
+      "name": "Road Block",
+      "category": "obstacle",
+      "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"28\" height=\"20\" viewBox=\"0 0 28 20\"><line x1=\"4\" y1=\"10\" x2=\"24\" y2=\"10\" stroke=\"#000\" stroke-width=\"3\"/><line x1=\"6\" y1=\"4\" x2=\"6\" y2=\"16\" stroke=\"#000\" stroke-width=\"2\"/><line x1=\"14\" y1=\"4\" x2=\"14\" y2=\"16\" stroke=\"#000\" stroke-width=\"2\"/><line x1=\"22\" y1=\"4\" x2=\"22\" y2=\"16\" stroke=\"#000\" stroke-width=\"2\"/></svg>"
+    },
+    {
+      "id": "s_phase_line",
+      "name": "Phase Line marker",
+      "category": "control",
+      "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"40\" height=\"16\" viewBox=\"0 0 40 16\"><line x1=\"0\" y1=\"8\" x2=\"40\" y2=\"8\" stroke=\"#000\" stroke-width=\"2.5\"/><text x=\"20\" y=\"6\" text-anchor=\"middle\" font-size=\"9\" font-family=\"Arial\" font-weight=\"700\" fill=\"#000\">PL</text></svg>"
+    },
+    {
+      "id": "s_boundary",
+      "name": "Boundary marker",
+      "category": "control",
+      "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"40\" height=\"16\" viewBox=\"0 0 40 16\"><line x1=\"0\" y1=\"8\" x2=\"40\" y2=\"8\" stroke=\"#000\" stroke-width=\"2.5\" stroke-dasharray=\"6,3\"/></svg>"
+    },
+    {
+      "id": "s_feba",
+      "name": "FEBA marker",
+      "category": "control",
+      "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"40\" height=\"16\" viewBox=\"0 0 40 16\"><line x1=\"0\" y1=\"10\" x2=\"40\" y2=\"10\" stroke=\"#000\" stroke-width=\"2.5\"/><text x=\"20\" y=\"8\" text-anchor=\"middle\" font-size=\"9\" font-family=\"Arial\" font-weight=\"700\" fill=\"#000\">FEBA</text></svg>"
+    },
+    {
+      "id": "s_axis",
+      "name": "Axis of Advance",
+      "category": "control",
+      "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"40\" height=\"14\" viewBox=\"0 0 40 14\"><line x1=\"0\" y1=\"7\" x2=\"34\" y2=\"7\" stroke=\"#000\" stroke-width=\"2\"/><polygon points=\"34,2 40,7 34,12\" fill=\"#000\"/></svg>"
+    },
+    {
+      "id": "s_ea",
+      "name": "Engagement Area",
+      "category": "control",
+      "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"30\" height=\"24\" viewBox=\"0 0 30 24\"><ellipse cx=\"15\" cy=\"12\" rx=\"13\" ry=\"9\" fill=\"none\" stroke=\"#000\" stroke-width=\"2\" stroke-dasharray=\"4,2\"/><text x=\"15\" y=\"16\" text-anchor=\"middle\" font-size=\"11\" font-family=\"Arial\" font-weight=\"700\" fill=\"#000\">EA</text></svg>"
+    },
+    {
+      "id": "s_ada",
+      "name": "ADA Coverage",
+      "category": "control",
+      "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"26\" height=\"22\" viewBox=\"0 0 26 22\"><path d=\"M13 2 L24 8 L22 18 L13 20 L4 18 L2 8 Z\" fill=\"none\" stroke=\"#000\" stroke-width=\"2\"/><text x=\"13\" y=\"14\" text-anchor=\"middle\" font-size=\"9\" font-family=\"Arial\" font-weight=\"700\" fill=\"#000\">ADA</text></svg>"
+    }
+  ],
+  "diceTemplates": [
+    {
+      "name": "d6",
+      "notation": "1d6"
+    },
+    {
+      "name": "2d6",
+      "notation": "2d6"
+    },
+    {
+      "name": "d10",
+      "notation": "1d10"
+    },
+    {
+      "name": "d20",
+      "notation": "1d20"
+    },
+    {
+      "name": "3d6",
+      "notation": "3d6"
+    },
+    {
+      "name": "2d6+2",
+      "notation": "2d6+2"
+    }
+  ],
+  "oob": {
+    "bluefor": [
+      {
+        "type": "formation",
+        "name": "Battlegroup Puukko",
+        "abbr": "BG Puukko",
+        "id": "id_127",
+        "side": "bluefor",
+        "children": [
+          {
+            "type": "unit",
+            "templateId": "t_mech_inf",
+            "name": "Mech Infantry Pl",
+            "designation": "A",
+            "description": "Mechanised infantry platoon",
+            "states": [
+              {
+                "id": "id_1",
+                "name": "Combat Ready",
+                "abbr": "Ready",
+                "customSVG": null,
+                "stats": [
+                  {
+                    "id": "id_2",
+                    "name": "Force Element size",
+                    "abbr": "FE size",
+                    "value": "Platoon",
+                    "notes": "Size of the unit",
+                    "showTooltip": true,
+                    "showOpponent": false
+                  },
+                  {
+                    "id": "id_3",
+                    "name": "Force Element type",
+                    "abbr": "FE type",
+                    "value": "Tracked",
+                    "notes": "Type of unit",
+                    "showTooltip": true,
+                    "showOpponent": false
+                  },
+                  {
+                    "id": "id_4",
+                    "name": "Resilience",
+                    "abbr": "Resilience",
+                    "value": "3",
+                    "notes": "FE's ability to withstand Hits",
+                    "showTooltip": true,
+                    "showOpponent": false
+                  },
+                  {
+                    "id": "id_5",
+                    "name": "Troop Quality",
+                    "abbr": "TQ",
+                    "value": "4",
+                    "notes": "FE's training, cohesion & will to fight",
+                    "showTooltip": true,
+                    "showOpponent": false
+                  },
+                  {
+                    "id": "id_6",
+                    "name": "ISTAR Asset",
+                    "abbr": "ISTAR",
+                    "value": "false",
+                    "notes": "FE acts as an ISTAR asset for LOS checks",
+                    "showTooltip": false,
+                    "showOpponent": false
+                  },
+                  {
+                    "id": "id_7",
+                    "name": "C2 Rating",
+                    "abbr": "C2",
+                    "value": "",
+                    "notes": "Command & Control rating for HQs",
+                    "showTooltip": false,
+                    "showOpponent": false
+                  },
+                  {
+                    "id": "id_8",
+                    "name": "Anti-personnel firepower",
+                    "abbr": "Apers",
+                    "value": "4",
+                    "notes": "Attack value against personnel",
+                    "showTooltip": true,
+                    "showOpponent": false
+                  },
+                  {
+                    "id": "id_9",
+                    "name": "Anti-tank firepower",
+                    "abbr": "Atk",
+                    "value": "3",
+                    "notes": "Attack value against armoured vehicles",
+                    "showTooltip": true,
+                    "showOpponent": false
+                  },
+                  {
+                    "id": "id_10",
+                    "name": "Anti-tank firepower type",
+                    "abbr": "Atk type",
+                    "value": "Normal",
+                    "notes": "",
+                    "showTooltip": true,
+                    "showOpponent": false
+                  }
+                ],
+                "movement": [
+                  {
+                    "id": "id_11",
+                    "name": "Max speed",
+                    "abbr": "Max",
+                    "value": 9,
+                    "notes": "",
+                    "showTooltip": false,
+                    "showOpponent": false
+                  },
+                  {
+                    "id": "id_12",
+                    "name": "Easy terrain",
+                    "abbr": "Easy",
+                    "value": 6,
+                    "notes": "",
+                    "showTooltip": false,
+                    "showOpponent": false
+                  },
+                  {
+                    "id": "id_13",
+                    "name": "Moderate terrain",
+                    "abbr": "Medium",
+                    "value": 3,
+                    "notes": "",
+                    "showTooltip": false,
+                    "showOpponent": false
+                  },
+                  {
+                    "id": "id_14",
+                    "name": "Hard terrain",
+                    "abbr": "Hard",
+                    "value": 0.75,
+                    "notes": "",
+                    "showTooltip": false,
+                    "showOpponent": false
+                  },
+                  {
+                    "id": "id_15",
+                    "name": "Impassable terrain",
+                    "abbr": "No-go",
+                    "value": 0,
+                    "notes": "",
+                    "showTooltip": false,
+                    "showOpponent": false
+                  }
+                ],
+                "rangeRings": [
+                  {
+                    "id": "id_16",
+                    "name": "Anti-personnel range",
+                    "abbr": "Apers range",
+                    "value": 2000,
+                    "color": "#d94a4a",
+                    "visible": false,
+                    "notes": "",
+                    "showTooltip": true,
+                    "showOpponent": false
+                  },
+                  {
+                    "id": "id_17",
+                    "name": "Anti-tank range",
+                    "abbr": "Atk range",
+                    "value": 1000,
+                    "color": "#f5a623",
+                    "visible": false,
+                    "notes": "",
+                    "showTooltip": true,
+                    "showOpponent": false
+                  },
+                  {
+                    "id": "id_18",
+                    "name": "Indirect range",
+                    "abbr": "Indirect",
+                    "value": 0,
+                    "color": "#4a90d9",
+                    "visible": false,
+                    "notes": "",
+                    "showTooltip": false,
+                    "showOpponent": false
+                  }
+                ]
+              }
+            ],
+            "customSVG": null,
+            "notes": "",
+            "deployed": true,
+            "unitId": "id_140",
+            "id": "id_128",
+            "side": "bluefor",
+            "children": []
+          },
+          {
+            "type": "unit",
+            "templateId": "t_mech_inf",
+            "name": "Mech Infantry Pl",
+            "designation": "B",
+            "description": "Mechanised infantry platoon",
+            "states": [
+              {
+                "id": "id_1",
+                "name": "Combat Ready",
+                "abbr": "Ready",
+                "customSVG": null,
+                "stats": [
+                  {
+                    "id": "id_2",
+                    "name": "Force Element size",
+                    "abbr": "FE size",
+                    "value": "Platoon",
+                    "notes": "Size of the unit",
+                    "showTooltip": true,
+                    "showOpponent": false
+                  },
+                  {
+                    "id": "id_3",
+                    "name": "Force Element type",
+                    "abbr": "FE type",
+                    "value": "Tracked",
+                    "notes": "Type of unit",
+                    "showTooltip": true,
+                    "showOpponent": false
+                  },
+                  {
+                    "id": "id_4",
+                    "name": "Resilience",
+                    "abbr": "Resilience",
+                    "value": "3",
+                    "notes": "FE's ability to withstand Hits",
+                    "showTooltip": true,
+                    "showOpponent": false
+                  },
+                  {
+                    "id": "id_5",
+                    "name": "Troop Quality",
+                    "abbr": "TQ",
+                    "value": "4",
+                    "notes": "FE's training, cohesion & will to fight",
+                    "showTooltip": true,
+                    "showOpponent": false
+                  },
+                  {
+                    "id": "id_6",
+                    "name": "ISTAR Asset",
+                    "abbr": "ISTAR",
+                    "value": "false",
+                    "notes": "FE acts as an ISTAR asset for LOS checks",
+                    "showTooltip": false,
+                    "showOpponent": false
+                  },
+                  {
+                    "id": "id_7",
+                    "name": "C2 Rating",
+                    "abbr": "C2",
+                    "value": "",
+                    "notes": "Command & Control rating for HQs",
+                    "showTooltip": false,
+                    "showOpponent": false
+                  },
+                  {
+                    "id": "id_8",
+                    "name": "Anti-personnel firepower",
+                    "abbr": "Apers",
+                    "value": "4",
+                    "notes": "Attack value against personnel",
+                    "showTooltip": true,
+                    "showOpponent": false
+                  },
+                  {
+                    "id": "id_9",
+                    "name": "Anti-tank firepower",
+                    "abbr": "Atk",
+                    "value": "3",
+                    "notes": "Attack value against armoured vehicles",
+                    "showTooltip": true,
+                    "showOpponent": false
+                  },
+                  {
+                    "id": "id_10",
+                    "name": "Anti-tank firepower type",
+                    "abbr": "Atk type",
+                    "value": "Normal",
+                    "notes": "",
+                    "showTooltip": true,
+                    "showOpponent": false
+                  }
+                ],
+                "movement": [
+                  {
+                    "id": "id_11",
+                    "name": "Max speed",
+                    "abbr": "Max",
+                    "value": 9,
+                    "notes": "",
+                    "showTooltip": false,
+                    "showOpponent": false
+                  },
+                  {
+                    "id": "id_12",
+                    "name": "Easy terrain",
+                    "abbr": "Easy",
+                    "value": 6,
+                    "notes": "",
+                    "showTooltip": false,
+                    "showOpponent": false
+                  },
+                  {
+                    "id": "id_13",
+                    "name": "Moderate terrain",
+                    "abbr": "Medium",
+                    "value": 3,
+                    "notes": "",
+                    "showTooltip": false,
+                    "showOpponent": false
+                  },
+                  {
+                    "id": "id_14",
+                    "name": "Hard terrain",
+                    "abbr": "Hard",
+                    "value": 0.75,
+                    "notes": "",
+                    "showTooltip": false,
+                    "showOpponent": false
+                  },
+                  {
+                    "id": "id_15",
+                    "name": "Impassable terrain",
+                    "abbr": "No-go",
+                    "value": 0,
+                    "notes": "",
+                    "showTooltip": false,
+                    "showOpponent": false
+                  }
+                ],
+                "rangeRings": [
+                  {
+                    "id": "id_16",
+                    "name": "Anti-personnel range",
+                    "abbr": "Apers range",
+                    "value": 2000,
+                    "color": "#d94a4a",
+                    "visible": false,
+                    "notes": "",
+                    "showTooltip": true,
+                    "showOpponent": false
+                  },
+                  {
+                    "id": "id_17",
+                    "name": "Anti-tank range",
+                    "abbr": "Atk range",
+                    "value": 1000,
+                    "color": "#f5a623",
+                    "visible": false,
+                    "notes": "",
+                    "showTooltip": true,
+                    "showOpponent": false
+                  },
+                  {
+                    "id": "id_18",
+                    "name": "Indirect range",
+                    "abbr": "Indirect",
+                    "value": 0,
+                    "color": "#4a90d9",
+                    "visible": false,
+                    "notes": "",
+                    "showTooltip": false,
+                    "showOpponent": false
+                  }
+                ]
+              }
+            ],
+            "customSVG": null,
+            "notes": "",
+            "deployed": true,
+            "unitId": "id_141",
+            "id": "id_129",
+            "side": "bluefor",
+            "children": []
+          },
+          {
+            "type": "unit",
+            "templateId": "t_mech_inf",
+            "name": "Mech Infantry Pl",
+            "designation": "C",
+            "description": "Mechanised infantry platoon",
+            "states": [
+              {
+                "id": "id_1",
+                "name": "Combat Ready",
+                "abbr": "Ready",
+                "customSVG": null,
+                "stats": [
+                  {
+                    "id": "id_2",
+                    "name": "Force Element size",
+                    "abbr": "FE size",
+                    "value": "Platoon",
+                    "notes": "Size of the unit",
+                    "showTooltip": true,
+                    "showOpponent": false
+                  },
+                  {
+                    "id": "id_3",
+                    "name": "Force Element type",
+                    "abbr": "FE type",
+                    "value": "Tracked",
+                    "notes": "Type of unit",
+                    "showTooltip": true,
+                    "showOpponent": false
+                  },
+                  {
+                    "id": "id_4",
+                    "name": "Resilience",
+                    "abbr": "Resilience",
+                    "value": "3",
+                    "notes": "FE's ability to withstand Hits",
+                    "showTooltip": true,
+                    "showOpponent": false
+                  },
+                  {
+                    "id": "id_5",
+                    "name": "Troop Quality",
+                    "abbr": "TQ",
+                    "value": "4",
+                    "notes": "FE's training, cohesion & will to fight",
+                    "showTooltip": true,
+                    "showOpponent": false
+                  },
+                  {
+                    "id": "id_6",
+                    "name": "ISTAR Asset",
+                    "abbr": "ISTAR",
+                    "value": "false",
+                    "notes": "FE acts as an ISTAR asset for LOS checks",
+                    "showTooltip": false,
+                    "showOpponent": false
+                  },
+                  {
+                    "id": "id_7",
+                    "name": "C2 Rating",
+                    "abbr": "C2",
+                    "value": "",
+                    "notes": "Command & Control rating for HQs",
+                    "showTooltip": false,
+                    "showOpponent": false
+                  },
+                  {
+                    "id": "id_8",
+                    "name": "Anti-personnel firepower",
+                    "abbr": "Apers",
+                    "value": "4",
+                    "notes": "Attack value against personnel",
+                    "showTooltip": true,
+                    "showOpponent": false
+                  },
+                  {
+                    "id": "id_9",
+                    "name": "Anti-tank firepower",
+                    "abbr": "Atk",
+                    "value": "3",
+                    "notes": "Attack value against armoured vehicles",
+                    "showTooltip": true,
+                    "showOpponent": false
+                  },
+                  {
+                    "id": "id_10",
+                    "name": "Anti-tank firepower type",
+                    "abbr": "Atk type",
+                    "value": "Normal",
+                    "notes": "",
+                    "showTooltip": true,
+                    "showOpponent": false
+                  }
+                ],
+                "movement": [
+                  {
+                    "id": "id_11",
+                    "name": "Max speed",
+                    "abbr": "Max",
+                    "value": 9,
+                    "notes": "",
+                    "showTooltip": false,
+                    "showOpponent": false
+                  },
+                  {
+                    "id": "id_12",
+                    "name": "Easy terrain",
+                    "abbr": "Easy",
+                    "value": 6,
+                    "notes": "",
+                    "showTooltip": false,
+                    "showOpponent": false
+                  },
+                  {
+                    "id": "id_13",
+                    "name": "Moderate terrain",
+                    "abbr": "Medium",
+                    "value": 3,
+                    "notes": "",
+                    "showTooltip": false,
+                    "showOpponent": false
+                  },
+                  {
+                    "id": "id_14",
+                    "name": "Hard terrain",
+                    "abbr": "Hard",
+                    "value": 0.75,
+                    "notes": "",
+                    "showTooltip": false,
+                    "showOpponent": false
+                  },
+                  {
+                    "id": "id_15",
+                    "name": "Impassable terrain",
+                    "abbr": "No-go",
+                    "value": 0,
+                    "notes": "",
+                    "showTooltip": false,
+                    "showOpponent": false
+                  }
+                ],
+                "rangeRings": [
+                  {
+                    "id": "id_16",
+                    "name": "Anti-personnel range",
+                    "abbr": "Apers range",
+                    "value": 2000,
+                    "color": "#d94a4a",
+                    "visible": false,
+                    "notes": "",
+                    "showTooltip": true,
+                    "showOpponent": false
+                  },
+                  {
+                    "id": "id_17",
+                    "name": "Anti-tank range",
+                    "abbr": "Atk range",
+                    "value": 1000,
+                    "color": "#f5a623",
+                    "visible": false,
+                    "notes": "",
+                    "showTooltip": true,
+                    "showOpponent": false
+                  },
+                  {
+                    "id": "id_18",
+                    "name": "Indirect range",
+                    "abbr": "Indirect",
+                    "value": 0,
+                    "color": "#4a90d9",
+                    "visible": false,
+                    "notes": "",
+                    "showTooltip": false,
+                    "showOpponent": false
+                  }
+                ]
+              }
+            ],
+            "customSVG": null,
+            "notes": "",
+            "deployed": true,
+            "unitId": "id_142",
+            "id": "id_130",
+            "side": "bluefor",
+            "children": []
+          }
+        ]
+      }
+    ],
+    "opfor": [
+      {
+        "type": "formation",
+        "name": "I/7 Motor Rifle Regiment",
+        "abbr": "I/7MRR",
+        "id": "id_131",
+        "side": "opfor",
+        "children": [
+          {
+            "type": "unit",
+            "templateId": "t_mech_inf",
+            "name": "Mech Infantry Pl",
+            "designation": "1",
+            "description": "Mechanised infantry platoon",
+            "states": [
+              {
+                "id": "id_1",
+                "name": "Combat Ready",
+                "abbr": "Ready",
+                "customSVG": null,
+                "stats": [
+                  {
+                    "id": "id_2",
+                    "name": "Force Element size",
+                    "abbr": "FE size",
+                    "value": "Platoon",
+                    "notes": "Size of the unit",
+                    "showTooltip": true,
+                    "showOpponent": false
+                  },
+                  {
+                    "id": "id_3",
+                    "name": "Force Element type",
+                    "abbr": "FE type",
+                    "value": "Tracked",
+                    "notes": "Type of unit",
+                    "showTooltip": true,
+                    "showOpponent": false
+                  },
+                  {
+                    "id": "id_4",
+                    "name": "Resilience",
+                    "abbr": "Resilience",
+                    "value": "3",
+                    "notes": "FE's ability to withstand Hits",
+                    "showTooltip": true,
+                    "showOpponent": false
+                  },
+                  {
+                    "id": "id_5",
+                    "name": "Troop Quality",
+                    "abbr": "TQ",
+                    "value": "4",
+                    "notes": "FE's training, cohesion & will to fight",
+                    "showTooltip": true,
+                    "showOpponent": false
+                  },
+                  {
+                    "id": "id_6",
+                    "name": "ISTAR Asset",
+                    "abbr": "ISTAR",
+                    "value": "false",
+                    "notes": "FE acts as an ISTAR asset for LOS checks",
+                    "showTooltip": false,
+                    "showOpponent": false
+                  },
+                  {
+                    "id": "id_7",
+                    "name": "C2 Rating",
+                    "abbr": "C2",
+                    "value": "",
+                    "notes": "Command & Control rating for HQs",
+                    "showTooltip": false,
+                    "showOpponent": false
+                  },
+                  {
+                    "id": "id_8",
+                    "name": "Anti-personnel firepower",
+                    "abbr": "Apers",
+                    "value": "4",
+                    "notes": "Attack value against personnel",
+                    "showTooltip": true,
+                    "showOpponent": false
+                  },
+                  {
+                    "id": "id_9",
+                    "name": "Anti-tank firepower",
+                    "abbr": "Atk",
+                    "value": "3",
+                    "notes": "Attack value against armoured vehicles",
+                    "showTooltip": true,
+                    "showOpponent": false
+                  },
+                  {
+                    "id": "id_10",
+                    "name": "Anti-tank firepower type",
+                    "abbr": "Atk type",
+                    "value": "Normal",
+                    "notes": "",
+                    "showTooltip": true,
+                    "showOpponent": false
+                  }
+                ],
+                "movement": [
+                  {
+                    "id": "id_11",
+                    "name": "Max speed",
+                    "abbr": "Max",
+                    "value": 9,
+                    "notes": "",
+                    "showTooltip": false,
+                    "showOpponent": false
+                  },
+                  {
+                    "id": "id_12",
+                    "name": "Easy terrain",
+                    "abbr": "Easy",
+                    "value": 6,
+                    "notes": "",
+                    "showTooltip": false,
+                    "showOpponent": false
+                  },
+                  {
+                    "id": "id_13",
+                    "name": "Moderate terrain",
+                    "abbr": "Medium",
+                    "value": 3,
+                    "notes": "",
+                    "showTooltip": false,
+                    "showOpponent": false
+                  },
+                  {
+                    "id": "id_14",
+                    "name": "Hard terrain",
+                    "abbr": "Hard",
+                    "value": 0.75,
+                    "notes": "",
+                    "showTooltip": false,
+                    "showOpponent": false
+                  },
+                  {
+                    "id": "id_15",
+                    "name": "Impassable terrain",
+                    "abbr": "No-go",
+                    "value": 0,
+                    "notes": "",
+                    "showTooltip": false,
+                    "showOpponent": false
+                  }
+                ],
+                "rangeRings": [
+                  {
+                    "id": "id_16",
+                    "name": "Anti-personnel range",
+                    "abbr": "Apers range",
+                    "value": 2000,
+                    "color": "#d94a4a",
+                    "visible": false,
+                    "notes": "",
+                    "showTooltip": true,
+                    "showOpponent": false
+                  },
+                  {
+                    "id": "id_17",
+                    "name": "Anti-tank range",
+                    "abbr": "Atk range",
+                    "value": 1000,
+                    "color": "#f5a623",
+                    "visible": false,
+                    "notes": "",
+                    "showTooltip": true,
+                    "showOpponent": false
+                  },
+                  {
+                    "id": "id_18",
+                    "name": "Indirect range",
+                    "abbr": "Indirect",
+                    "value": 0,
+                    "color": "#4a90d9",
+                    "visible": false,
+                    "notes": "",
+                    "showTooltip": false,
+                    "showOpponent": false
+                  }
+                ]
+              }
+            ],
+            "customSVG": null,
+            "notes": "",
+            "deployed": true,
+            "unitId": "id_136",
+            "id": "id_132",
+            "side": "opfor",
+            "children": []
+          },
+          {
+            "type": "unit",
+            "templateId": "t_mech_inf",
+            "name": "Mech Infantry Pl",
+            "designation": "2",
+            "description": "Mechanised infantry platoon",
+            "states": [
+              {
+                "id": "id_1",
+                "name": "Combat Ready",
+                "abbr": "Ready",
+                "customSVG": null,
+                "stats": [
+                  {
+                    "id": "id_2",
+                    "name": "Force Element size",
+                    "abbr": "FE size",
+                    "value": "Platoon",
+                    "notes": "Size of the unit",
+                    "showTooltip": true,
+                    "showOpponent": false
+                  },
+                  {
+                    "id": "id_3",
+                    "name": "Force Element type",
+                    "abbr": "FE type",
+                    "value": "Tracked",
+                    "notes": "Type of unit",
+                    "showTooltip": true,
+                    "showOpponent": false
+                  },
+                  {
+                    "id": "id_4",
+                    "name": "Resilience",
+                    "abbr": "Resilience",
+                    "value": "3",
+                    "notes": "FE's ability to withstand Hits",
+                    "showTooltip": true,
+                    "showOpponent": false
+                  },
+                  {
+                    "id": "id_5",
+                    "name": "Troop Quality",
+                    "abbr": "TQ",
+                    "value": "4",
+                    "notes": "FE's training, cohesion & will to fight",
+                    "showTooltip": true,
+                    "showOpponent": false
+                  },
+                  {
+                    "id": "id_6",
+                    "name": "ISTAR Asset",
+                    "abbr": "ISTAR",
+                    "value": "false",
+                    "notes": "FE acts as an ISTAR asset for LOS checks",
+                    "showTooltip": false,
+                    "showOpponent": false
+                  },
+                  {
+                    "id": "id_7",
+                    "name": "C2 Rating",
+                    "abbr": "C2",
+                    "value": "",
+                    "notes": "Command & Control rating for HQs",
+                    "showTooltip": false,
+                    "showOpponent": false
+                  },
+                  {
+                    "id": "id_8",
+                    "name": "Anti-personnel firepower",
+                    "abbr": "Apers",
+                    "value": "4",
+                    "notes": "Attack value against personnel",
+                    "showTooltip": true,
+                    "showOpponent": false
+                  },
+                  {
+                    "id": "id_9",
+                    "name": "Anti-tank firepower",
+                    "abbr": "Atk",
+                    "value": "3",
+                    "notes": "Attack value against armoured vehicles",
+                    "showTooltip": true,
+                    "showOpponent": false
+                  },
+                  {
+                    "id": "id_10",
+                    "name": "Anti-tank firepower type",
+                    "abbr": "Atk type",
+                    "value": "Normal",
+                    "notes": "",
+                    "showTooltip": true,
+                    "showOpponent": false
+                  }
+                ],
+                "movement": [
+                  {
+                    "id": "id_11",
+                    "name": "Max speed",
+                    "abbr": "Max",
+                    "value": 9,
+                    "notes": "",
+                    "showTooltip": false,
+                    "showOpponent": false
+                  },
+                  {
+                    "id": "id_12",
+                    "name": "Easy terrain",
+                    "abbr": "Easy",
+                    "value": 6,
+                    "notes": "",
+                    "showTooltip": false,
+                    "showOpponent": false
+                  },
+                  {
+                    "id": "id_13",
+                    "name": "Moderate terrain",
+                    "abbr": "Medium",
+                    "value": 3,
+                    "notes": "",
+                    "showTooltip": false,
+                    "showOpponent": false
+                  },
+                  {
+                    "id": "id_14",
+                    "name": "Hard terrain",
+                    "abbr": "Hard",
+                    "value": 0.75,
+                    "notes": "",
+                    "showTooltip": false,
+                    "showOpponent": false
+                  },
+                  {
+                    "id": "id_15",
+                    "name": "Impassable terrain",
+                    "abbr": "No-go",
+                    "value": 0,
+                    "notes": "",
+                    "showTooltip": false,
+                    "showOpponent": false
+                  }
+                ],
+                "rangeRings": [
+                  {
+                    "id": "id_16",
+                    "name": "Anti-personnel range",
+                    "abbr": "Apers range",
+                    "value": 2000,
+                    "color": "#d94a4a",
+                    "visible": false,
+                    "notes": "",
+                    "showTooltip": true,
+                    "showOpponent": false
+                  },
+                  {
+                    "id": "id_17",
+                    "name": "Anti-tank range",
+                    "abbr": "Atk range",
+                    "value": 1000,
+                    "color": "#f5a623",
+                    "visible": false,
+                    "notes": "",
+                    "showTooltip": true,
+                    "showOpponent": false
+                  },
+                  {
+                    "id": "id_18",
+                    "name": "Indirect range",
+                    "abbr": "Indirect",
+                    "value": 0,
+                    "color": "#4a90d9",
+                    "visible": false,
+                    "notes": "",
+                    "showTooltip": false,
+                    "showOpponent": false
+                  }
+                ]
+              }
+            ],
+            "customSVG": null,
+            "notes": "",
+            "deployed": true,
+            "unitId": "id_137",
+            "id": "id_133",
+            "side": "opfor",
+            "children": []
+          },
+          {
+            "type": "unit",
+            "templateId": "t_mech_inf",
+            "name": "Mech Infantry Pl",
+            "designation": "3",
+            "description": "Mechanised infantry platoon",
+            "states": [
+              {
+                "id": "id_1",
+                "name": "Combat Ready",
+                "abbr": "Ready",
+                "customSVG": null,
+                "stats": [
+                  {
+                    "id": "id_2",
+                    "name": "Force Element size",
+                    "abbr": "FE size",
+                    "value": "Platoon",
+                    "notes": "Size of the unit",
+                    "showTooltip": true,
+                    "showOpponent": false
+                  },
+                  {
+                    "id": "id_3",
+                    "name": "Force Element type",
+                    "abbr": "FE type",
+                    "value": "Tracked",
+                    "notes": "Type of unit",
+                    "showTooltip": true,
+                    "showOpponent": false
+                  },
+                  {
+                    "id": "id_4",
+                    "name": "Resilience",
+                    "abbr": "Resilience",
+                    "value": "3",
+                    "notes": "FE's ability to withstand Hits",
+                    "showTooltip": true,
+                    "showOpponent": false
+                  },
+                  {
+                    "id": "id_5",
+                    "name": "Troop Quality",
+                    "abbr": "TQ",
+                    "value": "4",
+                    "notes": "FE's training, cohesion & will to fight",
+                    "showTooltip": true,
+                    "showOpponent": false
+                  },
+                  {
+                    "id": "id_6",
+                    "name": "ISTAR Asset",
+                    "abbr": "ISTAR",
+                    "value": "false",
+                    "notes": "FE acts as an ISTAR asset for LOS checks",
+                    "showTooltip": false,
+                    "showOpponent": false
+                  },
+                  {
+                    "id": "id_7",
+                    "name": "C2 Rating",
+                    "abbr": "C2",
+                    "value": "",
+                    "notes": "Command & Control rating for HQs",
+                    "showTooltip": false,
+                    "showOpponent": false
+                  },
+                  {
+                    "id": "id_8",
+                    "name": "Anti-personnel firepower",
+                    "abbr": "Apers",
+                    "value": "4",
+                    "notes": "Attack value against personnel",
+                    "showTooltip": true,
+                    "showOpponent": false
+                  },
+                  {
+                    "id": "id_9",
+                    "name": "Anti-tank firepower",
+                    "abbr": "Atk",
+                    "value": "3",
+                    "notes": "Attack value against armoured vehicles",
+                    "showTooltip": true,
+                    "showOpponent": false
+                  },
+                  {
+                    "id": "id_10",
+                    "name": "Anti-tank firepower type",
+                    "abbr": "Atk type",
+                    "value": "Normal",
+                    "notes": "",
+                    "showTooltip": true,
+                    "showOpponent": false
+                  }
+                ],
+                "movement": [
+                  {
+                    "id": "id_11",
+                    "name": "Max speed",
+                    "abbr": "Max",
+                    "value": 9,
+                    "notes": "",
+                    "showTooltip": false,
+                    "showOpponent": false
+                  },
+                  {
+                    "id": "id_12",
+                    "name": "Easy terrain",
+                    "abbr": "Easy",
+                    "value": 6,
+                    "notes": "",
+                    "showTooltip": false,
+                    "showOpponent": false
+                  },
+                  {
+                    "id": "id_13",
+                    "name": "Moderate terrain",
+                    "abbr": "Medium",
+                    "value": 3,
+                    "notes": "",
+                    "showTooltip": false,
+                    "showOpponent": false
+                  },
+                  {
+                    "id": "id_14",
+                    "name": "Hard terrain",
+                    "abbr": "Hard",
+                    "value": 0.75,
+                    "notes": "",
+                    "showTooltip": false,
+                    "showOpponent": false
+                  },
+                  {
+                    "id": "id_15",
+                    "name": "Impassable terrain",
+                    "abbr": "No-go",
+                    "value": 0,
+                    "notes": "",
+                    "showTooltip": false,
+                    "showOpponent": false
+                  }
+                ],
+                "rangeRings": [
+                  {
+                    "id": "id_16",
+                    "name": "Anti-personnel range",
+                    "abbr": "Apers range",
+                    "value": 2000,
+                    "color": "#d94a4a",
+                    "visible": false,
+                    "notes": "",
+                    "showTooltip": true,
+                    "showOpponent": false
+                  },
+                  {
+                    "id": "id_17",
+                    "name": "Anti-tank range",
+                    "abbr": "Atk range",
+                    "value": 1000,
+                    "color": "#f5a623",
+                    "visible": false,
+                    "notes": "",
+                    "showTooltip": true,
+                    "showOpponent": false
+                  },
+                  {
+                    "id": "id_18",
+                    "name": "Indirect range",
+                    "abbr": "Indirect",
+                    "value": 0,
+                    "color": "#4a90d9",
+                    "visible": false,
+                    "notes": "",
+                    "showTooltip": false,
+                    "showOpponent": false
+                  }
+                ]
+              }
+            ],
+            "customSVG": null,
+            "notes": "",
+            "deployed": true,
+            "unitId": "id_138",
+            "id": "id_134",
+            "side": "opfor",
+            "children": []
+          },
+          {
+            "type": "unit",
+            "templateId": "t_armor",
+            "name": "Armor Pl",
+            "designation": "T",
+            "description": "Armoured platoon",
+            "states": [
+              {
+                "id": "id_37",
+                "name": "Combat Ready",
+                "abbr": "Ready",
+                "customSVG": null,
+                "stats": [
+                  {
+                    "id": "id_38",
+                    "name": "Force Element size",
+                    "abbr": "FE size",
+                    "value": "Platoon",
+                    "notes": "Size of the unit",
+                    "showTooltip": true,
+                    "showOpponent": false
+                  },
+                  {
+                    "id": "id_39",
+                    "name": "Force Element type",
+                    "abbr": "FE type",
+                    "value": "Tracked",
+                    "notes": "Type of unit",
+                    "showTooltip": true,
+                    "showOpponent": false
+                  },
+                  {
+                    "id": "id_40",
+                    "name": "Resilience",
+                    "abbr": "Resilience",
+                    "value": "4",
+                    "notes": "FE's ability to withstand Hits",
+                    "showTooltip": true,
+                    "showOpponent": false
+                  },
+                  {
+                    "id": "id_41",
+                    "name": "Troop Quality",
+                    "abbr": "TQ",
+                    "value": "4",
+                    "notes": "FE's training, cohesion & will to fight",
+                    "showTooltip": true,
+                    "showOpponent": false
+                  },
+                  {
+                    "id": "id_42",
+                    "name": "ISTAR Asset",
+                    "abbr": "ISTAR",
+                    "value": "false",
+                    "notes": "FE acts as an ISTAR asset for LOS checks",
+                    "showTooltip": false,
+                    "showOpponent": false
+                  },
+                  {
+                    "id": "id_43",
+                    "name": "C2 Rating",
+                    "abbr": "C2",
+                    "value": "",
+                    "notes": "Command & Control rating for HQs",
+                    "showTooltip": false,
+                    "showOpponent": false
+                  },
+                  {
+                    "id": "id_44",
+                    "name": "Anti-personnel firepower",
+                    "abbr": "Apers",
+                    "value": "3",
+                    "notes": "Attack value against personnel",
+                    "showTooltip": true,
+                    "showOpponent": false
+                  },
+                  {
+                    "id": "id_45",
+                    "name": "Anti-tank firepower",
+                    "abbr": "Atk",
+                    "value": "5",
+                    "notes": "Attack value against armoured vehicles",
+                    "showTooltip": true,
+                    "showOpponent": false
+                  },
+                  {
+                    "id": "id_46",
+                    "name": "Anti-tank firepower type",
+                    "abbr": "Atk type",
+                    "value": "Normal",
+                    "notes": "",
+                    "showTooltip": true,
+                    "showOpponent": false
+                  }
+                ],
+                "movement": [
+                  {
+                    "id": "id_47",
+                    "name": "Max speed",
+                    "abbr": "Max",
+                    "value": 9,
+                    "notes": "",
+                    "showTooltip": false,
+                    "showOpponent": false
+                  },
+                  {
+                    "id": "id_48",
+                    "name": "Easy terrain",
+                    "abbr": "Easy",
+                    "value": 6,
+                    "notes": "",
+                    "showTooltip": false,
+                    "showOpponent": false
+                  },
+                  {
+                    "id": "id_49",
+                    "name": "Moderate terrain",
+                    "abbr": "Medium",
+                    "value": 3,
+                    "notes": "",
+                    "showTooltip": false,
+                    "showOpponent": false
+                  },
+                  {
+                    "id": "id_50",
+                    "name": "Hard terrain",
+                    "abbr": "Hard",
+                    "value": 0.5,
+                    "notes": "",
+                    "showTooltip": false,
+                    "showOpponent": false
+                  },
+                  {
+                    "id": "id_51",
+                    "name": "Impassable terrain",
+                    "abbr": "No-go",
+                    "value": 0,
+                    "notes": "",
+                    "showTooltip": false,
+                    "showOpponent": false
+                  }
+                ],
+                "rangeRings": [
+                  {
+                    "id": "id_52",
+                    "name": "Anti-personnel range",
+                    "abbr": "Apers range",
+                    "value": 2000,
+                    "color": "#d94a4a",
+                    "visible": false,
+                    "notes": "",
+                    "showTooltip": true,
+                    "showOpponent": false
+                  },
+                  {
+                    "id": "id_53",
+                    "name": "Anti-tank range",
+                    "abbr": "Atk range",
+                    "value": 3000,
+                    "color": "#f5a623",
+                    "visible": false,
+                    "notes": "",
+                    "showTooltip": true,
+                    "showOpponent": false
+                  },
+                  {
+                    "id": "id_54",
+                    "name": "Indirect range",
+                    "abbr": "Indirect",
+                    "value": 0,
+                    "color": "#4a90d9",
+                    "visible": false,
+                    "notes": "",
+                    "showTooltip": false,
+                    "showOpponent": false
+                  }
+                ]
+              }
+            ],
+            "customSVG": null,
+            "notes": "",
+            "deployed": true,
+            "unitId": "id_139",
+            "id": "id_135",
+            "side": "opfor",
+            "children": []
+          }
+        ]
+      }
+    ]
+  },
+  "layers": [
+    {
+      "id": "l_terrain",
+      "name": "Terrain Features",
+      "visibility": "all",
+      "editability": "umpire",
+      "color": "#8a7a3a",
+      "visible": true,
+      "role": "terrain"
+    },
+    {
+      "id": "l_tactical_shared",
+      "name": "Tactical (Known)",
+      "visibility": "all",
+      "editability": "all",
+      "color": "#4ecca3",
+      "visible": true,
+      "role": "tactical_shared"
+    },
+    {
+      "id": "l_tactical_bluefor",
+      "name": "Tactical (BLUFOR)",
+      "visibility": "bluefor",
+      "editability": "bluefor",
+      "color": "#4a90d9",
+      "visible": true,
+      "role": "tactical_bluefor"
+    },
+    {
+      "id": "l_tactical_opfor",
+      "name": "Tactical (OPFOR)",
+      "visibility": "opfor",
+      "editability": "opfor",
+      "color": "#d94a4a",
+      "visible": true,
+      "role": "tactical_opfor"
+    },
+    {
+      "id": "l_orders_bluefor",
+      "name": "Orders (BLUFOR)",
+      "visibility": "bluefor",
+      "editability": "bluefor",
+      "color": "#2a6bc4",
+      "visible": true,
+      "role": "orders_bluefor"
+    },
+    {
+      "id": "l_orders_opfor",
+      "name": "Orders (OPFOR)",
+      "visibility": "opfor",
+      "editability": "opfor",
+      "color": "#a83030",
+      "visible": true,
+      "role": "orders_opfor"
+    },
+    {
+      "id": "l_umpire",
+      "name": "Umpire Notes",
+      "visibility": "umpire",
+      "editability": "umpire",
+      "color": "#b47ed9",
+      "visible": true,
+      "role": "umpire"
+    }
+  ],
+  "units": [
+    {
+      "id": "id_136",
+      "templateId": "t_mech_inf",
+      "oobEntryId": "id_132",
+      "name": "Mech Infantry Pl",
+      "designation": "1",
+      "description": "Mechanised infantry platoon",
+      "type": "infantry_mech",
+      "side": "opfor",
+      "echelon": "platoon",
+      "latlng": [
+        61.09605982362197,
+        27.086706161499023
+      ],
+      "customSVG": null,
+      "activeStateId": "id_1",
+      "states": [
+        {
+          "id": "id_1",
+          "name": "Combat Ready",
+          "abbr": "Ready",
+          "customSVG": null,
+          "stats": [
+            {
+              "id": "id_2",
+              "name": "Force Element size",
+              "abbr": "FE size",
+              "value": "Platoon",
+              "notes": "Size of the unit",
+              "showTooltip": true,
+              "showOpponent": false
+            },
+            {
+              "id": "id_3",
+              "name": "Force Element type",
+              "abbr": "FE type",
+              "value": "Tracked",
+              "notes": "Type of unit",
+              "showTooltip": true,
+              "showOpponent": false
+            },
+            {
+              "id": "id_4",
+              "name": "Resilience",
+              "abbr": "Resilience",
+              "value": "3",
+              "notes": "FE's ability to withstand Hits",
+              "showTooltip": true,
+              "showOpponent": false
+            },
+            {
+              "id": "id_5",
+              "name": "Troop Quality",
+              "abbr": "TQ",
+              "value": "4",
+              "notes": "FE's training, cohesion & will to fight",
+              "showTooltip": true,
+              "showOpponent": false
+            },
+            {
+              "id": "id_6",
+              "name": "ISTAR Asset",
+              "abbr": "ISTAR",
+              "value": "false",
+              "notes": "FE acts as an ISTAR asset for LOS checks",
+              "showTooltip": false,
+              "showOpponent": false
+            },
+            {
+              "id": "id_7",
+              "name": "C2 Rating",
+              "abbr": "C2",
+              "value": "",
+              "notes": "Command & Control rating for HQs",
+              "showTooltip": false,
+              "showOpponent": false
+            },
+            {
+              "id": "id_8",
+              "name": "Anti-personnel firepower",
+              "abbr": "Apers",
+              "value": "4",
+              "notes": "Attack value against personnel",
+              "showTooltip": true,
+              "showOpponent": false
+            },
+            {
+              "id": "id_9",
+              "name": "Anti-tank firepower",
+              "abbr": "Atk",
+              "value": "3",
+              "notes": "Attack value against armoured vehicles",
+              "showTooltip": true,
+              "showOpponent": false
+            },
+            {
+              "id": "id_10",
+              "name": "Anti-tank firepower type",
+              "abbr": "Atk type",
+              "value": "Normal",
+              "notes": "",
+              "showTooltip": true,
+              "showOpponent": false
+            }
+          ],
+          "movement": [
+            {
+              "id": "id_11",
+              "name": "Max speed",
+              "abbr": "Max",
+              "value": 9,
+              "notes": "",
+              "showTooltip": false,
+              "showOpponent": false
+            },
+            {
+              "id": "id_12",
+              "name": "Easy terrain",
+              "abbr": "Easy",
+              "value": 6,
+              "notes": "",
+              "showTooltip": false,
+              "showOpponent": false
+            },
+            {
+              "id": "id_13",
+              "name": "Moderate terrain",
+              "abbr": "Medium",
+              "value": 3,
+              "notes": "",
+              "showTooltip": false,
+              "showOpponent": false
+            },
+            {
+              "id": "id_14",
+              "name": "Hard terrain",
+              "abbr": "Hard",
+              "value": 0.75,
+              "notes": "",
+              "showTooltip": false,
+              "showOpponent": false
+            },
+            {
+              "id": "id_15",
+              "name": "Impassable terrain",
+              "abbr": "No-go",
+              "value": 0,
+              "notes": "",
+              "showTooltip": false,
+              "showOpponent": false
+            }
+          ],
+          "rangeRings": [
+            {
+              "id": "id_16",
+              "name": "Anti-personnel range",
+              "abbr": "Apers range",
+              "value": 2000,
+              "color": "#d94a4a",
+              "visible": false,
+              "notes": "",
+              "showTooltip": true,
+              "showOpponent": false
+            },
+            {
+              "id": "id_17",
+              "name": "Anti-tank range",
+              "abbr": "Atk range",
+              "value": 1000,
+              "color": "#f5a623",
+              "visible": false,
+              "notes": "",
+              "showTooltip": true,
+              "showOpponent": false
+            },
+            {
+              "id": "id_18",
+              "name": "Indirect range",
+              "abbr": "Indirect",
+              "value": 0,
+              "color": "#4a90d9",
+              "visible": false,
+              "notes": "",
+              "showTooltip": false,
+              "showOpponent": false
+            }
+          ]
+        }
+      ],
+      "fieldVisibility": {
+        "name": {
+          "showTooltip": true,
+          "showOpponent": true
+        },
+        "designation": {
+          "showTooltip": true,
+          "showOpponent": false
+        },
+        "side": {
+          "showTooltip": false,
+          "showOpponent": false
+        },
+        "description": {
+          "showTooltip": true,
+          "showOpponent": false
+        }
+      },
+      "notes": "",
+      "notesHistory": {},
+      "previousLatlng": null,
+      "detection": {
+        "bluefor": "identified",
+        "opfor": "self"
+      },
+      "detectionId": {
+        "bluefor": 1,
+        "opfor": null
+      },
+      "modifiers": []
+    },
+    {
+      "id": "id_137",
+      "templateId": "t_mech_inf",
+      "oobEntryId": "id_133",
+      "name": "Mech Infantry Pl",
+      "designation": "2",
+      "description": "Mechanised infantry platoon",
+      "type": "infantry_mech",
+      "side": "opfor",
+      "echelon": "platoon",
+      "latlng": [
+        61.09498117893062,
+        27.095289230346683
+      ],
+      "customSVG": null,
+      "activeStateId": "id_1",
+      "states": [
+        {
+          "id": "id_1",
+          "name": "Combat Ready",
+          "abbr": "Ready",
+          "customSVG": null,
+          "stats": [
+            {
+              "id": "id_2",
+              "name": "Force Element size",
+              "abbr": "FE size",
+              "value": "Platoon",
+              "notes": "Size of the unit",
+              "showTooltip": true,
+              "showOpponent": false
+            },
+            {
+              "id": "id_3",
+              "name": "Force Element type",
+              "abbr": "FE type",
+              "value": "Tracked",
+              "notes": "Type of unit",
+              "showTooltip": true,
+              "showOpponent": false
+            },
+            {
+              "id": "id_4",
+              "name": "Resilience",
+              "abbr": "Resilience",
+              "value": "3",
+              "notes": "FE's ability to withstand Hits",
+              "showTooltip": true,
+              "showOpponent": false
+            },
+            {
+              "id": "id_5",
+              "name": "Troop Quality",
+              "abbr": "TQ",
+              "value": "4",
+              "notes": "FE's training, cohesion & will to fight",
+              "showTooltip": true,
+              "showOpponent": false
+            },
+            {
+              "id": "id_6",
+              "name": "ISTAR Asset",
+              "abbr": "ISTAR",
+              "value": "false",
+              "notes": "FE acts as an ISTAR asset for LOS checks",
+              "showTooltip": false,
+              "showOpponent": false
+            },
+            {
+              "id": "id_7",
+              "name": "C2 Rating",
+              "abbr": "C2",
+              "value": "",
+              "notes": "Command & Control rating for HQs",
+              "showTooltip": false,
+              "showOpponent": false
+            },
+            {
+              "id": "id_8",
+              "name": "Anti-personnel firepower",
+              "abbr": "Apers",
+              "value": "4",
+              "notes": "Attack value against personnel",
+              "showTooltip": true,
+              "showOpponent": false
+            },
+            {
+              "id": "id_9",
+              "name": "Anti-tank firepower",
+              "abbr": "Atk",
+              "value": "3",
+              "notes": "Attack value against armoured vehicles",
+              "showTooltip": true,
+              "showOpponent": false
+            },
+            {
+              "id": "id_10",
+              "name": "Anti-tank firepower type",
+              "abbr": "Atk type",
+              "value": "Normal",
+              "notes": "",
+              "showTooltip": true,
+              "showOpponent": false
+            }
+          ],
+          "movement": [
+            {
+              "id": "id_11",
+              "name": "Max speed",
+              "abbr": "Max",
+              "value": 9,
+              "notes": "",
+              "showTooltip": false,
+              "showOpponent": false
+            },
+            {
+              "id": "id_12",
+              "name": "Easy terrain",
+              "abbr": "Easy",
+              "value": 6,
+              "notes": "",
+              "showTooltip": false,
+              "showOpponent": false
+            },
+            {
+              "id": "id_13",
+              "name": "Moderate terrain",
+              "abbr": "Medium",
+              "value": 3,
+              "notes": "",
+              "showTooltip": false,
+              "showOpponent": false
+            },
+            {
+              "id": "id_14",
+              "name": "Hard terrain",
+              "abbr": "Hard",
+              "value": 0.75,
+              "notes": "",
+              "showTooltip": false,
+              "showOpponent": false
+            },
+            {
+              "id": "id_15",
+              "name": "Impassable terrain",
+              "abbr": "No-go",
+              "value": 0,
+              "notes": "",
+              "showTooltip": false,
+              "showOpponent": false
+            }
+          ],
+          "rangeRings": [
+            {
+              "id": "id_16",
+              "name": "Anti-personnel range",
+              "abbr": "Apers range",
+              "value": 2000,
+              "color": "#d94a4a",
+              "visible": false,
+              "notes": "",
+              "showTooltip": true,
+              "showOpponent": false
+            },
+            {
+              "id": "id_17",
+              "name": "Anti-tank range",
+              "abbr": "Atk range",
+              "value": 1000,
+              "color": "#f5a623",
+              "visible": false,
+              "notes": "",
+              "showTooltip": true,
+              "showOpponent": false
+            },
+            {
+              "id": "id_18",
+              "name": "Indirect range",
+              "abbr": "Indirect",
+              "value": 0,
+              "color": "#4a90d9",
+              "visible": false,
+              "notes": "",
+              "showTooltip": false,
+              "showOpponent": false
+            }
+          ]
+        }
+      ],
+      "fieldVisibility": {
+        "name": {
+          "showTooltip": true,
+          "showOpponent": true
+        },
+        "designation": {
+          "showTooltip": true,
+          "showOpponent": false
+        },
+        "side": {
+          "showTooltip": false,
+          "showOpponent": false
+        },
+        "description": {
+          "showTooltip": true,
+          "showOpponent": false
+        }
+      },
+      "notes": "",
+      "notesHistory": {},
+      "previousLatlng": null,
+      "detection": {
+        "bluefor": "detected",
+        "opfor": "self"
+      },
+      "detectionId": {
+        "bluefor": null,
+        "opfor": null
+      },
+      "modifiers": []
+    },
+    {
+      "id": "id_138",
+      "templateId": "t_mech_inf",
+      "oobEntryId": "id_134",
+      "name": "Mech Infantry Pl",
+      "designation": "3",
+      "description": "Mechanised infantry platoon",
+      "type": "infantry_mech",
+      "side": "opfor",
+      "echelon": "platoon",
+      "latlng": [
+        61.093280164497536,
+        27.10361480712891
+      ],
+      "customSVG": null,
+      "activeStateId": "id_1",
+      "states": [
+        {
+          "id": "id_1",
+          "name": "Combat Ready",
+          "abbr": "Ready",
+          "customSVG": null,
+          "stats": [
+            {
+              "id": "id_2",
+              "name": "Force Element size",
+              "abbr": "FE size",
+              "value": "Platoon",
+              "notes": "Size of the unit",
+              "showTooltip": true,
+              "showOpponent": false
+            },
+            {
+              "id": "id_3",
+              "name": "Force Element type",
+              "abbr": "FE type",
+              "value": "Tracked",
+              "notes": "Type of unit",
+              "showTooltip": true,
+              "showOpponent": false
+            },
+            {
+              "id": "id_4",
+              "name": "Resilience",
+              "abbr": "Resilience",
+              "value": "3",
+              "notes": "FE's ability to withstand Hits",
+              "showTooltip": true,
+              "showOpponent": false
+            },
+            {
+              "id": "id_5",
+              "name": "Troop Quality",
+              "abbr": "TQ",
+              "value": "4",
+              "notes": "FE's training, cohesion & will to fight",
+              "showTooltip": true,
+              "showOpponent": false
+            },
+            {
+              "id": "id_6",
+              "name": "ISTAR Asset",
+              "abbr": "ISTAR",
+              "value": "false",
+              "notes": "FE acts as an ISTAR asset for LOS checks",
+              "showTooltip": false,
+              "showOpponent": false
+            },
+            {
+              "id": "id_7",
+              "name": "C2 Rating",
+              "abbr": "C2",
+              "value": "",
+              "notes": "Command & Control rating for HQs",
+              "showTooltip": false,
+              "showOpponent": false
+            },
+            {
+              "id": "id_8",
+              "name": "Anti-personnel firepower",
+              "abbr": "Apers",
+              "value": "4",
+              "notes": "Attack value against personnel",
+              "showTooltip": true,
+              "showOpponent": false
+            },
+            {
+              "id": "id_9",
+              "name": "Anti-tank firepower",
+              "abbr": "Atk",
+              "value": "3",
+              "notes": "Attack value against armoured vehicles",
+              "showTooltip": true,
+              "showOpponent": false
+            },
+            {
+              "id": "id_10",
+              "name": "Anti-tank firepower type",
+              "abbr": "Atk type",
+              "value": "Normal",
+              "notes": "",
+              "showTooltip": true,
+              "showOpponent": false
+            }
+          ],
+          "movement": [
+            {
+              "id": "id_11",
+              "name": "Max speed",
+              "abbr": "Max",
+              "value": 9,
+              "notes": "",
+              "showTooltip": false,
+              "showOpponent": false
+            },
+            {
+              "id": "id_12",
+              "name": "Easy terrain",
+              "abbr": "Easy",
+              "value": 6,
+              "notes": "",
+              "showTooltip": false,
+              "showOpponent": false
+            },
+            {
+              "id": "id_13",
+              "name": "Moderate terrain",
+              "abbr": "Medium",
+              "value": 3,
+              "notes": "",
+              "showTooltip": false,
+              "showOpponent": false
+            },
+            {
+              "id": "id_14",
+              "name": "Hard terrain",
+              "abbr": "Hard",
+              "value": 0.75,
+              "notes": "",
+              "showTooltip": false,
+              "showOpponent": false
+            },
+            {
+              "id": "id_15",
+              "name": "Impassable terrain",
+              "abbr": "No-go",
+              "value": 0,
+              "notes": "",
+              "showTooltip": false,
+              "showOpponent": false
+            }
+          ],
+          "rangeRings": [
+            {
+              "id": "id_16",
+              "name": "Anti-personnel range",
+              "abbr": "Apers range",
+              "value": 2000,
+              "color": "#d94a4a",
+              "visible": false,
+              "notes": "",
+              "showTooltip": true,
+              "showOpponent": false
+            },
+            {
+              "id": "id_17",
+              "name": "Anti-tank range",
+              "abbr": "Atk range",
+              "value": 1000,
+              "color": "#f5a623",
+              "visible": false,
+              "notes": "",
+              "showTooltip": true,
+              "showOpponent": false
+            },
+            {
+              "id": "id_18",
+              "name": "Indirect range",
+              "abbr": "Indirect",
+              "value": 0,
+              "color": "#4a90d9",
+              "visible": false,
+              "notes": "",
+              "showTooltip": false,
+              "showOpponent": false
+            }
+          ]
+        }
+      ],
+      "fieldVisibility": {
+        "name": {
+          "showTooltip": true,
+          "showOpponent": true
+        },
+        "designation": {
+          "showTooltip": true,
+          "showOpponent": false
+        },
+        "side": {
+          "showTooltip": false,
+          "showOpponent": false
+        },
+        "description": {
+          "showTooltip": true,
+          "showOpponent": false
+        }
+      },
+      "notes": "",
+      "notesHistory": {},
+      "previousLatlng": null,
+      "detection": {
+        "bluefor": "detected",
+        "opfor": "self"
+      },
+      "detectionId": {
+        "bluefor": null,
+        "opfor": null
+      },
+      "modifiers": []
+    },
+    {
+      "id": "id_139",
+      "templateId": "t_armor",
+      "oobEntryId": "id_135",
+      "name": "Armor Pl",
+      "designation": "T",
+      "description": "Armoured platoon",
+      "type": "armor",
+      "side": "opfor",
+      "echelon": "platoon",
+      "latlng": [
+        61.09398547426403,
+        27.07760810852051
+      ],
+      "customSVG": null,
+      "activeStateId": "id_37",
+      "states": [
+        {
+          "id": "id_37",
+          "name": "Combat Ready",
+          "abbr": "Ready",
+          "customSVG": null,
+          "stats": [
+            {
+              "id": "id_38",
+              "name": "Force Element size",
+              "abbr": "FE size",
+              "value": "Platoon",
+              "notes": "Size of the unit",
+              "showTooltip": true,
+              "showOpponent": false
+            },
+            {
+              "id": "id_39",
+              "name": "Force Element type",
+              "abbr": "FE type",
+              "value": "Tracked",
+              "notes": "Type of unit",
+              "showTooltip": true,
+              "showOpponent": false
+            },
+            {
+              "id": "id_40",
+              "name": "Resilience",
+              "abbr": "Resilience",
+              "value": "4",
+              "notes": "FE's ability to withstand Hits",
+              "showTooltip": true,
+              "showOpponent": false
+            },
+            {
+              "id": "id_41",
+              "name": "Troop Quality",
+              "abbr": "TQ",
+              "value": "4",
+              "notes": "FE's training, cohesion & will to fight",
+              "showTooltip": true,
+              "showOpponent": false
+            },
+            {
+              "id": "id_42",
+              "name": "ISTAR Asset",
+              "abbr": "ISTAR",
+              "value": "false",
+              "notes": "FE acts as an ISTAR asset for LOS checks",
+              "showTooltip": false,
+              "showOpponent": false
+            },
+            {
+              "id": "id_43",
+              "name": "C2 Rating",
+              "abbr": "C2",
+              "value": "",
+              "notes": "Command & Control rating for HQs",
+              "showTooltip": false,
+              "showOpponent": false
+            },
+            {
+              "id": "id_44",
+              "name": "Anti-personnel firepower",
+              "abbr": "Apers",
+              "value": "3",
+              "notes": "Attack value against personnel",
+              "showTooltip": true,
+              "showOpponent": false
+            },
+            {
+              "id": "id_45",
+              "name": "Anti-tank firepower",
+              "abbr": "Atk",
+              "value": "5",
+              "notes": "Attack value against armoured vehicles",
+              "showTooltip": true,
+              "showOpponent": false
+            },
+            {
+              "id": "id_46",
+              "name": "Anti-tank firepower type",
+              "abbr": "Atk type",
+              "value": "Normal",
+              "notes": "",
+              "showTooltip": true,
+              "showOpponent": false
+            }
+          ],
+          "movement": [
+            {
+              "id": "id_47",
+              "name": "Max speed",
+              "abbr": "Max",
+              "value": 9,
+              "notes": "",
+              "showTooltip": false,
+              "showOpponent": false
+            },
+            {
+              "id": "id_48",
+              "name": "Easy terrain",
+              "abbr": "Easy",
+              "value": 6,
+              "notes": "",
+              "showTooltip": false,
+              "showOpponent": false
+            },
+            {
+              "id": "id_49",
+              "name": "Moderate terrain",
+              "abbr": "Medium",
+              "value": 3,
+              "notes": "",
+              "showTooltip": false,
+              "showOpponent": false
+            },
+            {
+              "id": "id_50",
+              "name": "Hard terrain",
+              "abbr": "Hard",
+              "value": 0.5,
+              "notes": "",
+              "showTooltip": false,
+              "showOpponent": false
+            },
+            {
+              "id": "id_51",
+              "name": "Impassable terrain",
+              "abbr": "No-go",
+              "value": 0,
+              "notes": "",
+              "showTooltip": false,
+              "showOpponent": false
+            }
+          ],
+          "rangeRings": [
+            {
+              "id": "id_52",
+              "name": "Anti-personnel range",
+              "abbr": "Apers range",
+              "value": 2000,
+              "color": "#d94a4a",
+              "visible": false,
+              "notes": "",
+              "showTooltip": true,
+              "showOpponent": false
+            },
+            {
+              "id": "id_53",
+              "name": "Anti-tank range",
+              "abbr": "Atk range",
+              "value": 3000,
+              "color": "#f5a623",
+              "visible": false,
+              "notes": "",
+              "showTooltip": true,
+              "showOpponent": false
+            },
+            {
+              "id": "id_54",
+              "name": "Indirect range",
+              "abbr": "Indirect",
+              "value": 0,
+              "color": "#4a90d9",
+              "visible": false,
+              "notes": "",
+              "showTooltip": false,
+              "showOpponent": false
+            }
+          ]
+        }
+      ],
+      "fieldVisibility": {
+        "name": {
+          "showTooltip": true,
+          "showOpponent": true
+        },
+        "designation": {
+          "showTooltip": true,
+          "showOpponent": false
+        },
+        "side": {
+          "showTooltip": false,
+          "showOpponent": false
+        },
+        "description": {
+          "showTooltip": true,
+          "showOpponent": false
+        }
+      },
+      "notes": "",
+      "notesHistory": {},
+      "previousLatlng": null,
+      "detection": {
+        "bluefor": "detected",
+        "opfor": "self"
+      },
+      "detectionId": {
+        "bluefor": null,
+        "opfor": null
+      },
+      "modifiers": []
+    },
+    {
+      "id": "id_140",
+      "templateId": "t_mech_inf",
+      "oobEntryId": "id_128",
+      "name": "Mech Infantry Pl",
+      "designation": "A",
+      "description": "Mechanised infantry platoon",
+      "type": "infantry_mech",
+      "side": "bluefor",
+      "echelon": "platoon",
+      "latlng": [
+        61.10269682759207,
+        27.100782394409183
+      ],
+      "customSVG": null,
+      "activeStateId": "id_1",
+      "states": [
+        {
+          "id": "id_1",
+          "name": "Combat Ready",
+          "abbr": "Ready",
+          "customSVG": null,
+          "stats": [
+            {
+              "id": "id_2",
+              "name": "Force Element size",
+              "abbr": "FE size",
+              "value": "Platoon",
+              "notes": "Size of the unit",
+              "showTooltip": true,
+              "showOpponent": false
+            },
+            {
+              "id": "id_3",
+              "name": "Force Element type",
+              "abbr": "FE type",
+              "value": "Tracked",
+              "notes": "Type of unit",
+              "showTooltip": true,
+              "showOpponent": false
+            },
+            {
+              "id": "id_4",
+              "name": "Resilience",
+              "abbr": "Resilience",
+              "value": "3",
+              "notes": "FE's ability to withstand Hits",
+              "showTooltip": true,
+              "showOpponent": false
+            },
+            {
+              "id": "id_5",
+              "name": "Troop Quality",
+              "abbr": "TQ",
+              "value": "4",
+              "notes": "FE's training, cohesion & will to fight",
+              "showTooltip": true,
+              "showOpponent": false
+            },
+            {
+              "id": "id_6",
+              "name": "ISTAR Asset",
+              "abbr": "ISTAR",
+              "value": "false",
+              "notes": "FE acts as an ISTAR asset for LOS checks",
+              "showTooltip": false,
+              "showOpponent": false
+            },
+            {
+              "id": "id_7",
+              "name": "C2 Rating",
+              "abbr": "C2",
+              "value": "",
+              "notes": "Command & Control rating for HQs",
+              "showTooltip": false,
+              "showOpponent": false
+            },
+            {
+              "id": "id_8",
+              "name": "Anti-personnel firepower",
+              "abbr": "Apers",
+              "value": "4",
+              "notes": "Attack value against personnel",
+              "showTooltip": true,
+              "showOpponent": false
+            },
+            {
+              "id": "id_9",
+              "name": "Anti-tank firepower",
+              "abbr": "Atk",
+              "value": "3",
+              "notes": "Attack value against armoured vehicles",
+              "showTooltip": true,
+              "showOpponent": false
+            },
+            {
+              "id": "id_10",
+              "name": "Anti-tank firepower type",
+              "abbr": "Atk type",
+              "value": "Normal",
+              "notes": "",
+              "showTooltip": true,
+              "showOpponent": false
+            }
+          ],
+          "movement": [
+            {
+              "id": "id_11",
+              "name": "Max speed",
+              "abbr": "Max",
+              "value": 9,
+              "notes": "",
+              "showTooltip": false,
+              "showOpponent": false
+            },
+            {
+              "id": "id_12",
+              "name": "Easy terrain",
+              "abbr": "Easy",
+              "value": 6,
+              "notes": "",
+              "showTooltip": false,
+              "showOpponent": false
+            },
+            {
+              "id": "id_13",
+              "name": "Moderate terrain",
+              "abbr": "Medium",
+              "value": 3,
+              "notes": "",
+              "showTooltip": false,
+              "showOpponent": false
+            },
+            {
+              "id": "id_14",
+              "name": "Hard terrain",
+              "abbr": "Hard",
+              "value": 0.75,
+              "notes": "",
+              "showTooltip": false,
+              "showOpponent": false
+            },
+            {
+              "id": "id_15",
+              "name": "Impassable terrain",
+              "abbr": "No-go",
+              "value": 0,
+              "notes": "",
+              "showTooltip": false,
+              "showOpponent": false
+            }
+          ],
+          "rangeRings": [
+            {
+              "id": "id_16",
+              "name": "Anti-personnel range",
+              "abbr": "Apers range",
+              "value": 2000,
+              "color": "#d94a4a",
+              "visible": false,
+              "notes": "",
+              "showTooltip": true,
+              "showOpponent": false
+            },
+            {
+              "id": "id_17",
+              "name": "Anti-tank range",
+              "abbr": "Atk range",
+              "value": 1000,
+              "color": "#f5a623",
+              "visible": false,
+              "notes": "",
+              "showTooltip": true,
+              "showOpponent": false
+            },
+            {
+              "id": "id_18",
+              "name": "Indirect range",
+              "abbr": "Indirect",
+              "value": 0,
+              "color": "#4a90d9",
+              "visible": false,
+              "notes": "",
+              "showTooltip": false,
+              "showOpponent": false
+            }
+          ]
+        }
+      ],
+      "fieldVisibility": {
+        "name": {
+          "showTooltip": true,
+          "showOpponent": true
+        },
+        "designation": {
+          "showTooltip": true,
+          "showOpponent": false
+        },
+        "side": {
+          "showTooltip": false,
+          "showOpponent": false
+        },
+        "description": {
+          "showTooltip": true,
+          "showOpponent": false
+        }
+      },
+      "notes": "",
+      "notesHistory": {},
+      "previousLatlng": null,
+      "detection": {
+        "bluefor": "self",
+        "opfor": "unknown"
+      },
+      "detectionId": {
+        "bluefor": null,
+        "opfor": null
+      },
+      "modifiers": []
+    },
+    {
+      "id": "id_141",
+      "templateId": "t_mech_inf",
+      "oobEntryId": "id_129",
+      "name": "Mech Infantry Pl",
+      "designation": "B",
+      "description": "Mechanised infantry platoon",
+      "type": "infantry_mech",
+      "side": "bluefor",
+      "echelon": "platoon",
+      "latlng": [
+        61.10170136577771,
+        27.065935134887695
+      ],
+      "customSVG": null,
+      "activeStateId": "id_1",
+      "states": [
+        {
+          "id": "id_1",
+          "name": "Combat Ready",
+          "abbr": "Ready",
+          "customSVG": null,
+          "stats": [
+            {
+              "id": "id_2",
+              "name": "Force Element size",
+              "abbr": "FE size",
+              "value": "Platoon",
+              "notes": "Size of the unit",
+              "showTooltip": true,
+              "showOpponent": false
+            },
+            {
+              "id": "id_3",
+              "name": "Force Element type",
+              "abbr": "FE type",
+              "value": "Tracked",
+              "notes": "Type of unit",
+              "showTooltip": true,
+              "showOpponent": false
+            },
+            {
+              "id": "id_4",
+              "name": "Resilience",
+              "abbr": "Resilience",
+              "value": "3",
+              "notes": "FE's ability to withstand Hits",
+              "showTooltip": true,
+              "showOpponent": false
+            },
+            {
+              "id": "id_5",
+              "name": "Troop Quality",
+              "abbr": "TQ",
+              "value": "4",
+              "notes": "FE's training, cohesion & will to fight",
+              "showTooltip": true,
+              "showOpponent": false
+            },
+            {
+              "id": "id_6",
+              "name": "ISTAR Asset",
+              "abbr": "ISTAR",
+              "value": "false",
+              "notes": "FE acts as an ISTAR asset for LOS checks",
+              "showTooltip": false,
+              "showOpponent": false
+            },
+            {
+              "id": "id_7",
+              "name": "C2 Rating",
+              "abbr": "C2",
+              "value": "",
+              "notes": "Command & Control rating for HQs",
+              "showTooltip": false,
+              "showOpponent": false
+            },
+            {
+              "id": "id_8",
+              "name": "Anti-personnel firepower",
+              "abbr": "Apers",
+              "value": "4",
+              "notes": "Attack value against personnel",
+              "showTooltip": true,
+              "showOpponent": false
+            },
+            {
+              "id": "id_9",
+              "name": "Anti-tank firepower",
+              "abbr": "Atk",
+              "value": "3",
+              "notes": "Attack value against armoured vehicles",
+              "showTooltip": true,
+              "showOpponent": false
+            },
+            {
+              "id": "id_10",
+              "name": "Anti-tank firepower type",
+              "abbr": "Atk type",
+              "value": "Normal",
+              "notes": "",
+              "showTooltip": true,
+              "showOpponent": false
+            }
+          ],
+          "movement": [
+            {
+              "id": "id_11",
+              "name": "Max speed",
+              "abbr": "Max",
+              "value": 9,
+              "notes": "",
+              "showTooltip": false,
+              "showOpponent": false
+            },
+            {
+              "id": "id_12",
+              "name": "Easy terrain",
+              "abbr": "Easy",
+              "value": 6,
+              "notes": "",
+              "showTooltip": false,
+              "showOpponent": false
+            },
+            {
+              "id": "id_13",
+              "name": "Moderate terrain",
+              "abbr": "Medium",
+              "value": 3,
+              "notes": "",
+              "showTooltip": false,
+              "showOpponent": false
+            },
+            {
+              "id": "id_14",
+              "name": "Hard terrain",
+              "abbr": "Hard",
+              "value": 0.75,
+              "notes": "",
+              "showTooltip": false,
+              "showOpponent": false
+            },
+            {
+              "id": "id_15",
+              "name": "Impassable terrain",
+              "abbr": "No-go",
+              "value": 0,
+              "notes": "",
+              "showTooltip": false,
+              "showOpponent": false
+            }
+          ],
+          "rangeRings": [
+            {
+              "id": "id_16",
+              "name": "Anti-personnel range",
+              "abbr": "Apers range",
+              "value": 2000,
+              "color": "#d94a4a",
+              "visible": false,
+              "notes": "",
+              "showTooltip": true,
+              "showOpponent": false
+            },
+            {
+              "id": "id_17",
+              "name": "Anti-tank range",
+              "abbr": "Atk range",
+              "value": 1000,
+              "color": "#f5a623",
+              "visible": false,
+              "notes": "",
+              "showTooltip": true,
+              "showOpponent": false
+            },
+            {
+              "id": "id_18",
+              "name": "Indirect range",
+              "abbr": "Indirect",
+              "value": 0,
+              "color": "#4a90d9",
+              "visible": false,
+              "notes": "",
+              "showTooltip": false,
+              "showOpponent": false
+            }
+          ]
+        }
+      ],
+      "fieldVisibility": {
+        "name": {
+          "showTooltip": true,
+          "showOpponent": true
+        },
+        "designation": {
+          "showTooltip": true,
+          "showOpponent": false
+        },
+        "side": {
+          "showTooltip": false,
+          "showOpponent": false
+        },
+        "description": {
+          "showTooltip": true,
+          "showOpponent": false
+        }
+      },
+      "notes": "",
+      "notesHistory": {},
+      "previousLatlng": null,
+      "detection": {
+        "bluefor": "self",
+        "opfor": "unknown"
+      },
+      "detectionId": {
+        "bluefor": null,
+        "opfor": null
+      },
+      "modifiers": []
+    },
+    {
+      "id": "id_142",
+      "templateId": "t_mech_inf",
+      "oobEntryId": "id_130",
+      "name": "Mech Infantry Pl",
+      "designation": "C",
+      "description": "Mechanised infantry platoon",
+      "type": "infantry_mech",
+      "side": "bluefor",
+      "echelon": "platoon",
+      "latlng": [
+        61.09332165374258,
+        27.124042510986328
+      ],
+      "customSVG": null,
+      "activeStateId": "id_1",
+      "states": [
+        {
+          "id": "id_1",
+          "name": "Combat Ready",
+          "abbr": "Ready",
+          "customSVG": null,
+          "stats": [
+            {
+              "id": "id_2",
+              "name": "Force Element size",
+              "abbr": "FE size",
+              "value": "Platoon",
+              "notes": "Size of the unit",
+              "showTooltip": true,
+              "showOpponent": false
+            },
+            {
+              "id": "id_3",
+              "name": "Force Element type",
+              "abbr": "FE type",
+              "value": "Tracked",
+              "notes": "Type of unit",
+              "showTooltip": true,
+              "showOpponent": false
+            },
+            {
+              "id": "id_4",
+              "name": "Resilience",
+              "abbr": "Resilience",
+              "value": "3",
+              "notes": "FE's ability to withstand Hits",
+              "showTooltip": true,
+              "showOpponent": false
+            },
+            {
+              "id": "id_5",
+              "name": "Troop Quality",
+              "abbr": "TQ",
+              "value": "4",
+              "notes": "FE's training, cohesion & will to fight",
+              "showTooltip": true,
+              "showOpponent": false
+            },
+            {
+              "id": "id_6",
+              "name": "ISTAR Asset",
+              "abbr": "ISTAR",
+              "value": "false",
+              "notes": "FE acts as an ISTAR asset for LOS checks",
+              "showTooltip": false,
+              "showOpponent": false
+            },
+            {
+              "id": "id_7",
+              "name": "C2 Rating",
+              "abbr": "C2",
+              "value": "",
+              "notes": "Command & Control rating for HQs",
+              "showTooltip": false,
+              "showOpponent": false
+            },
+            {
+              "id": "id_8",
+              "name": "Anti-personnel firepower",
+              "abbr": "Apers",
+              "value": "4",
+              "notes": "Attack value against personnel",
+              "showTooltip": true,
+              "showOpponent": false
+            },
+            {
+              "id": "id_9",
+              "name": "Anti-tank firepower",
+              "abbr": "Atk",
+              "value": "3",
+              "notes": "Attack value against armoured vehicles",
+              "showTooltip": true,
+              "showOpponent": false
+            },
+            {
+              "id": "id_10",
+              "name": "Anti-tank firepower type",
+              "abbr": "Atk type",
+              "value": "Normal",
+              "notes": "",
+              "showTooltip": true,
+              "showOpponent": false
+            }
+          ],
+          "movement": [
+            {
+              "id": "id_11",
+              "name": "Max speed",
+              "abbr": "Max",
+              "value": 9,
+              "notes": "",
+              "showTooltip": false,
+              "showOpponent": false
+            },
+            {
+              "id": "id_12",
+              "name": "Easy terrain",
+              "abbr": "Easy",
+              "value": 6,
+              "notes": "",
+              "showTooltip": false,
+              "showOpponent": false
+            },
+            {
+              "id": "id_13",
+              "name": "Moderate terrain",
+              "abbr": "Medium",
+              "value": 3,
+              "notes": "",
+              "showTooltip": false,
+              "showOpponent": false
+            },
+            {
+              "id": "id_14",
+              "name": "Hard terrain",
+              "abbr": "Hard",
+              "value": 0.75,
+              "notes": "",
+              "showTooltip": false,
+              "showOpponent": false
+            },
+            {
+              "id": "id_15",
+              "name": "Impassable terrain",
+              "abbr": "No-go",
+              "value": 0,
+              "notes": "",
+              "showTooltip": false,
+              "showOpponent": false
+            }
+          ],
+          "rangeRings": [
+            {
+              "id": "id_16",
+              "name": "Anti-personnel range",
+              "abbr": "Apers range",
+              "value": 2000,
+              "color": "#d94a4a",
+              "visible": false,
+              "notes": "",
+              "showTooltip": true,
+              "showOpponent": false
+            },
+            {
+              "id": "id_17",
+              "name": "Anti-tank range",
+              "abbr": "Atk range",
+              "value": 1000,
+              "color": "#f5a623",
+              "visible": false,
+              "notes": "",
+              "showTooltip": true,
+              "showOpponent": false
+            },
+            {
+              "id": "id_18",
+              "name": "Indirect range",
+              "abbr": "Indirect",
+              "value": 0,
+              "color": "#4a90d9",
+              "visible": false,
+              "notes": "",
+              "showTooltip": false,
+              "showOpponent": false
+            }
+          ]
+        }
+      ],
+      "fieldVisibility": {
+        "name": {
+          "showTooltip": true,
+          "showOpponent": true
+        },
+        "designation": {
+          "showTooltip": true,
+          "showOpponent": false
+        },
+        "side": {
+          "showTooltip": false,
+          "showOpponent": false
+        },
+        "description": {
+          "showTooltip": true,
+          "showOpponent": false
+        }
+      },
+      "notes": "",
+      "notesHistory": {},
+      "previousLatlng": null,
+      "detection": {
+        "bluefor": "self",
+        "opfor": "unknown"
+      },
+      "detectionId": {
+        "bluefor": null,
+        "opfor": null
+      },
+      "modifiers": []
+    }
+  ],
+  "markers": [],
+  "drawings": [
+    {
+      "layerId": "l_terrain",
+      "style": {
+        "color": "#8a7a3a",
+        "weight": 2,
+        "fillOpacity": 0.2,
+        "opacity": 1,
+        "dashArray": null
+      },
+      "type": "polygon",
+      "geometry": {
+        "points": [
+          [
+            61.09128861674942,
+            27.09709167480469
+          ],
+          [
+            61.092491858503735,
+            27.09837913513184
+          ],
+          [
+            61.08942142688107,
+            27.11408615112305
+          ],
+          [
+            61.089670391896405,
+            27.122240066528324
+          ],
+          [
+            61.08987786124618,
+            27.12704658508301
+          ],
+          [
+            61.09041727518934,
+            27.131938934326175
+          ],
+          [
+            61.092574839006986,
+            27.136745452880863
+          ],
+          [
+            61.09141309215637,
+            27.142410278320316
+          ],
+          [
+            61.090251302647786,
+            27.155199050903324
+          ],
+          [
+            61.08805208428159,
+            27.15682983398438
+          ],
+          [
+            61.08738813926659,
+            27.15434074401856
+          ],
+          [
+            61.085541468942836,
+            27.1538257598877
+          ],
+          [
+            61.08556221864619,
+            27.152194976806644
+          ],
+          [
+            61.08126673998443,
+            27.143139839172363
+          ],
+          [
+            61.08103846152057,
+            27.140693664550785
+          ],
+          [
+            61.08292689747005,
+            27.13198184967041
+          ],
+          [
+            61.08359093608359,
+            27.124986648559574
+          ],
+          [
+            61.08456621753962,
+            27.12395668029785
+          ],
+          [
+            61.08556221864619,
+            27.124342918396
+          ],
+          [
+            61.08566596695885,
+            27.122669219970707
+          ],
+          [
+            61.084669969117385,
+            27.122154235839847
+          ],
+          [
+            61.084669969117385,
+            27.118549346923828
+          ],
+          [
+            61.08450396642972,
+            27.110009193420414
+          ],
+          [
+            61.08498122180997,
+            27.10597515106201
+          ],
+          [
+            61.084835970934364,
+            27.103056907653812
+          ],
+          [
+            61.08375694356018,
+            27.101297378540043
+          ],
+          [
+            61.08276088563984,
+            27.100996971130375
+          ],
+          [
+            61.083113659738245,
+            27.09958076477051
+          ],
+          [
+            61.083985202418766,
+            27.09962368011475
+          ],
+          [
+            61.0841927090435,
+            27.09752082824707
+          ],
+          [
+            61.08535472100052,
+            27.098250389099125
+          ],
+          [
+            61.08635069729258,
+            27.102413177490238
+          ],
+          [
+            61.08720140222118,
+            27.10275650024414
+          ],
+          [
+            61.087180653592576,
+            27.097864151000977
+          ],
+          [
+            61.08894423845968,
+            27.09657669067383
+          ],
+          [
+            61.08902722826728,
+            27.097606658935547
+          ],
+          [
+            61.09101891835447,
+            27.098765373229984
+          ]
+        ]
+      },
+      "id": "id_143",
+      "properties": {
+        "label": "Swamp"
+      }
+    },
+    {
+      "layerId": "l_terrain",
+      "type": "text",
+      "geometry": {
+        "latlng": [
+          61.087595623580185,
+          27.113656997680664
+        ]
+      },
+      "properties": {
+        "text": "SWAMPLAND",
+        "textColor": "#808040",
+        "size": 20,
+        "background": ""
+      },
+      "id": "id_144"
+    },
+    {
+      "layerId": "l_tactical_bluefor",
+      "type": "polyline",
+      "geometry": {
+        "points": [
+          [
+            61.0957557042611,
+            27.088294029235843
+          ],
+          [
+            61.0961150287311,
+            27.088294029235843
+          ]
+        ]
+      },
+      "style": {
+        "color": "#e94560",
+        "weight": 2
+      },
+      "properties": {
+        "label": "Center",
+        "group": "id_148",
+        "groupLabel": "FIRE MISSION 1",
+        "groupType": "Range ring"
+      },
+      "id": "id_149"
+    },
+    {
+      "layerId": "l_tactical_bluefor",
+      "type": "polyline",
+      "geometry": {
+        "points": [
+          [
+            61.0959353664961,
+            27.087922322845795
+          ],
+          [
+            61.0959353664961,
+            27.08866573562589
+          ]
+        ]
+      },
+      "style": {
+        "color": "#e94560",
+        "weight": 2
+      },
+      "properties": {
+        "label": "Center",
+        "group": "id_148",
+        "groupLabel": "FIRE MISSION 1",
+        "groupType": "Range ring"
+      },
+      "id": "id_150"
+    },
+    {
+      "layerId": "l_tactical_bluefor",
+      "type": "circle",
+      "geometry": {
+        "center": [
+          61.0959353664961,
+          27.088294029235843
+        ],
+        "radius": 100
+      },
+      "style": {
+        "color": "#e94560",
+        "weight": 1,
+        "fillOpacity": 0,
+        "dashArray": "4,4"
+      },
+      "properties": {
+        "label": "100 m",
+        "group": "id_148",
+        "groupLabel": "FIRE MISSION 1",
+        "groupType": "Range ring"
+      },
+      "id": "id_151"
+    },
+    {
+      "layerId": "l_tactical_bluefor",
+      "type": "circle",
+      "geometry": {
+        "center": [
+          61.0959353664961,
+          27.088294029235843
+        ],
+        "radius": 200
+      },
+      "style": {
+        "color": "#e94560",
+        "weight": 1,
+        "fillOpacity": 0,
+        "dashArray": "4,4"
+      },
+      "properties": {
+        "label": "200 m",
+        "group": "id_148",
+        "groupLabel": "FIRE MISSION 1",
+        "groupType": "Range ring"
+      },
+      "id": "id_152"
+    },
+    {
+      "layerId": "l_tactical_bluefor",
+      "type": "circle",
+      "geometry": {
+        "center": [
+          61.0959353664961,
+          27.088294029235843
+        ],
+        "radius": 500
+      },
+      "style": {
+        "color": "#e94560",
+        "weight": 1,
+        "fillOpacity": 0,
+        "dashArray": "4,4",
+        "opacity": 1
+      },
+      "properties": {
+        "label": "500 m",
+        "group": "id_148",
+        "groupLabel": "FIRE MISSION 1",
+        "groupType": "Range ring"
+      },
+      "id": "id_153"
+    },
+    {
+      "layerId": "l_tactical_bluefor",
+      "type": "text",
+      "geometry": {
+        "latlng": [
+          61.093757287530835,
+          27.083787918090824
+        ]
+      },
+      "properties": {
+        "text": "FIRE MISSION 1",
+        "textColor": "#ff0000",
+        "size": 20,
+        "background": ""
+      },
+      "id": "id_154"
+    }
+  ],
+  "movementOrders": [
+    {
+      "id": "id_145",
+      "unitId": "id_141",
+      "orderType": "disrupt",
+      "sequenceIndex": 0,
+      "points": [
+        [
+          61.10170136577771,
+          27.065935134887695
+        ],
+        [
+          61.09668210190657,
+          27.069969177246097
+        ],
+        [
+          61.09473225570194,
+          27.074775695800785
+        ]
+      ],
+      "segmentModes": [
+        "id_12",
+        "id_12"
+      ],
+      "startTime": null,
+      "endTime": null,
+      "duration": null,
+      "notes": "",
+      "turn": 0
+    },
+    {
+      "id": "id_146",
+      "unitId": "id_140",
+      "orderType": "attack",
+      "sequenceIndex": 0,
+      "points": [
+        [
+          61.10269682759207,
+          27.100782394409183
+        ],
+        [
+          61.09971034814793,
+          27.09657669067383
+        ],
+        [
+          61.09672358669032,
+          27.088937759399418
+        ]
+      ],
+      "segmentModes": [
+        "id_12",
+        "id_12"
+      ],
+      "startTime": null,
+      "endTime": null,
+      "duration": null,
+      "notes": "",
+      "turn": 0
+    },
+    {
+      "id": "id_147",
+      "unitId": "id_142",
+      "orderType": "disrupt",
+      "sequenceIndex": 0,
+      "points": [
+        [
+          61.09274079936058,
+          27.116661071777347
+        ],
+        [
+          61.09286526905444,
+          27.107048034667972
+        ]
+      ],
+      "segmentModes": [],
+      "startTime": null,
+      "endTime": null,
+      "duration": 60,
+      "notes": "",
+      "turn": 0
+    }
+  ],
+  "actionLog": [
+    {
+      "text": "Unit deployed: Mech Infantry Pl 1 (opfor)",
+      "type": "",
+      "turn": 0,
+      "time": "2026-04-20T14:34:01.013Z"
+    },
+    {
+      "text": "Unit deployed: Mech Infantry Pl 2 (opfor)",
+      "type": "",
+      "turn": 0,
+      "time": "2026-04-20T14:34:06.360Z"
+    },
+    {
+      "text": "Unit deployed: Mech Infantry Pl 3 (opfor)",
+      "type": "",
+      "turn": 0,
+      "time": "2026-04-20T14:34:10.035Z"
+    },
+    {
+      "text": "Unit deployed: Armor Pl T (opfor)",
+      "type": "",
+      "turn": 0,
+      "time": "2026-04-20T14:34:14.316Z"
+    },
+    {
+      "text": "Unit deployed: Mech Infantry Pl A (bluefor)",
+      "type": "",
+      "turn": 0,
+      "time": "2026-04-20T14:34:27.854Z"
+    },
+    {
+      "text": "Unit deployed: Mech Infantry Pl B (bluefor)",
+      "type": "",
+      "turn": 0,
+      "time": "2026-04-20T14:34:34.124Z"
+    },
+    {
+      "text": "Unit deployed: Mech Infantry Pl C (bluefor)",
+      "type": "",
+      "turn": 0,
+      "time": "2026-04-20T14:34:37.799Z"
+    },
+    {
+      "text": "Enemy unit detected (bluefor view)",
+      "type": "",
+      "turn": 0,
+      "time": "2026-04-20T14:37:43.398Z"
+    },
+    {
+      "text": "Enemy unit identified (bluefor view): assigned #1",
+      "type": "",
+      "turn": 0,
+      "time": "2026-04-20T14:37:46.345Z"
+    },
+    {
+      "text": "Enemy unit detected (bluefor view)",
+      "type": "",
+      "turn": 0,
+      "time": "2026-04-20T14:37:49.271Z"
+    },
+    {
+      "text": "Enemy unit detected (bluefor view)",
+      "type": "",
+      "turn": 0,
+      "time": "2026-04-20T14:37:52.460Z"
+    },
+    {
+      "text": "Enemy unit detected (bluefor view)",
+      "type": "",
+      "turn": 0,
+      "time": "2026-04-20T14:37:55.826Z"
+    },
+    {
+      "text": "Attack order for Mech Infantry Pl B → 0.94 km, 0.5 turns",
+      "type": "",
+      "turn": 0,
+      "time": "2026-04-20T14:38:22.134Z"
+    },
+    {
+      "text": "Attack order for Mech Infantry Pl A → 0.93 km, 0.5 turns",
+      "type": "",
+      "turn": 0,
+      "time": "2026-04-20T14:39:02.950Z"
+    },
+    {
+      "text": "Fix order for Mech Infantry Pl C → area (2 vtx)",
+      "type": "",
+      "turn": 0,
+      "time": "2026-04-20T14:39:23.874Z"
+    }
+  ],
+  "committedLog": [
+    {
+      "text": "Unit deployed: Mech Infantry Pl 1 (opfor)",
+      "type": "commit",
+      "turn": 0,
+      "time": "2026-04-20T14:34:01.013Z"
+    },
+    {
+      "text": "Unit deployed: Mech Infantry Pl 2 (opfor)",
+      "type": "commit",
+      "turn": 0,
+      "time": "2026-04-20T14:34:06.360Z"
+    },
+    {
+      "text": "Unit deployed: Mech Infantry Pl 3 (opfor)",
+      "type": "commit",
+      "turn": 0,
+      "time": "2026-04-20T14:34:10.035Z"
+    },
+    {
+      "text": "Unit deployed: Armor Pl T (opfor)",
+      "type": "commit",
+      "turn": 0,
+      "time": "2026-04-20T14:34:14.316Z"
+    },
+    {
+      "text": "Unit deployed: Mech Infantry Pl A (bluefor)",
+      "type": "commit",
+      "turn": 0,
+      "time": "2026-04-20T14:34:27.854Z"
+    },
+    {
+      "text": "Unit deployed: Mech Infantry Pl B (bluefor)",
+      "type": "commit",
+      "turn": 0,
+      "time": "2026-04-20T14:34:34.124Z"
+    },
+    {
+      "text": "Unit deployed: Mech Infantry Pl C (bluefor)",
+      "type": "commit",
+      "turn": 0,
+      "time": "2026-04-20T14:34:37.799Z"
+    },
+    {
+      "text": "Enemy unit detected (bluefor view)",
+      "type": "commit",
+      "turn": 0,
+      "time": "2026-04-20T14:37:43.398Z"
+    },
+    {
+      "text": "Enemy unit identified (bluefor view): assigned #1",
+      "type": "commit",
+      "turn": 0,
+      "time": "2026-04-20T14:37:46.345Z"
+    },
+    {
+      "text": "Enemy unit detected (bluefor view)",
+      "type": "commit",
+      "turn": 0,
+      "time": "2026-04-20T14:37:49.271Z"
+    },
+    {
+      "text": "Enemy unit detected (bluefor view)",
+      "type": "commit",
+      "turn": 0,
+      "time": "2026-04-20T14:37:52.460Z"
+    },
+    {
+      "text": "Enemy unit detected (bluefor view)",
+      "type": "commit",
+      "turn": 0,
+      "time": "2026-04-20T14:37:55.826Z"
+    },
+    {
+      "text": "Attack order for Mech Infantry Pl B → 0.94 km, 0.5 turns",
+      "type": "commit",
+      "turn": 0,
+      "time": "2026-04-20T14:38:22.134Z"
+    },
+    {
+      "text": "Attack order for Mech Infantry Pl A → 0.93 km, 0.5 turns",
+      "type": "commit",
+      "turn": 0,
+      "time": "2026-04-20T14:39:02.950Z"
+    },
+    {
+      "text": "Fix order for Mech Infantry Pl C → area (2 vtx)",
+      "type": "commit",
+      "turn": 0,
+      "time": "2026-04-20T14:39:23.874Z"
+    }
+  ],
+  "turnHistory": []
+}
