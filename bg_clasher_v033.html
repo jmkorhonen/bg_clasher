@@ -169,8 +169,8 @@
 
   #drawStyleBar {
     position: absolute;
-    top: 48px;
-    left: 52px;
+    top: 76px;
+    left: 56px;
     z-index: 1000;
     background: var(--panel);
     border: 1px solid var(--panel-border);
@@ -562,7 +562,7 @@
     align-items: flex-end;
   }
   .leaflet-control-scale {
-    margin: 0 8px 4px 0 !important;
+    margin: 0 8px 4px 8px !important;
     box-shadow: none !important;
     clear: both;
   }
@@ -581,7 +581,7 @@
   }
 
   .leaflet-control-vscale {
-    margin: 0 8px 4px 0 !important;
+    margin: 0 8px 4px 8px !important;
     pointer-events: none;
   }
   .leaflet-control-vscale .vscale-wrap {
@@ -612,6 +612,8 @@
     color: var(--text) !important;
     border-color: var(--panel-border) !important;
   }
+  /* Hide default Leaflet.Draw tooltip — replaced by custom drawTooltip */
+  .leaflet-draw-tooltip { display: none !important; }
   .leaflet-control-layers label { color: var(--text) !important; }
   .leaflet-bar a:hover { background: var(--accent2) !important; }
   .leaflet-draw { display: none !important; }
@@ -778,7 +780,7 @@
 </div>
 
 <div id="toolbar">
-  <button title="Pan / Select (Esc)" onclick="setTool('pan')" id="tool-pan" class="active">↖</button>
+  <button title="Select / Pan (Esc)" onclick="setTool('pan')" id="tool-pan" class="active"><svg width="14" height="18" viewBox="0 0 14 18" style="fill:currentColor"><path d="M1,1 L1,15 L5,11 L9,17 L11,16 L7,10 L12,10 Z"/></svg></button>
   <div class="group-sep"></div>
   <button title="Place Unit (U)" onclick="setTool('unit')" id="tool-unit">□</button>
   <div class="group-sep"></div>
@@ -791,9 +793,24 @@
   <button title="Add Text (T)" onclick="setTool('text')" id="tool-text">T</button>
   <div class="group-sep"></div>
   <button title="Measure (M)" onclick="setTool('measure')" id="tool-measure">📏</button>
+  <button title="Measure Angle (A)" onclick="setTool('angle')" id="tool-angle">∠</button>
   <button title="Range Ring (R)" onclick="setTool('ring')" id="tool-ring">◎</button>
-  <div class="group-sep"></div>
-  <button title="Edit / Delete (E)" onclick="setTool('edit')" id="tool-edit">✎</button>
+</div>
+
+<div id="snapBar" style="display:none;position:absolute;top:106px;left:56px;z-index:1000;background:var(--panel);border:1px solid var(--panel-border);border-radius:6px;padding:4px 8px;font-size:10px;align-items:center;gap:6px">
+  <label style="white-space:nowrap;color:var(--text-dim)"><input type="checkbox" id="snapAngle" onchange="updateSnapState()"> Snap angle</label>
+  <select id="snapAngleDeg" style="font-size:10px;width:48px" onchange="updateSnapState()">
+    <option value="45">45°</option>
+    <option value="30">30°</option>
+    <option value="15">15°</option>
+  </select>
+  <label style="white-space:nowrap;color:var(--text-dim)"><input type="checkbox" id="snapLength" onchange="updateSnapState()"> Snap length</label>
+  <select id="snapLengthM" style="font-size:10px;width:52px" onchange="updateSnapState()">
+    <option value="50">50 m</option>
+    <option value="100">100 m</option>
+    <option value="250">250 m</option>
+    <option value="500">500 m</option>
+  </select>
 </div>
 
 <div id="drawStyleBar" style="display:none">
@@ -805,7 +822,7 @@
   <button class="dsb-swatch" data-dash="14,6" onclick="setDrawDash('14,6',this)" title="Long dash"><svg width="40" height="10"><line x1="2" y1="5" x2="38" y2="5" stroke="#fff" stroke-width="2" stroke-dasharray="10,4"/></svg></button>
 </div>
 
-<div id="currentLayerDisplay" onclick="openPanel('layers')">
+<div id="currentLayerDisplay" onclick="openPanel('layers')" title="Current layer. Click for layer view.">
   <span class="layer-dot" id="curLayerDot"></span>
   <span id="curLayerName">—</span>
 </div>
@@ -827,6 +844,7 @@
 
 <div id="map"></div>
 
+<div id="drawTooltip" style="display:none;position:fixed;z-index:2000;background:var(--panel);border:1px solid var(--panel-border);border-radius:4px;padding:4px 8px;font-size:11px;color:var(--text);font-family:var(--mono);pointer-events:none;white-space:nowrap;line-height:1.4"></div>
 <div id="iconErrorBar" style="display:none;position:absolute;bottom:28px;left:0;right:0;background:#a83030;color:#fff;padding:4px 12px;font-size:11px;z-index:999;align-items:center;gap:8px">
   <span>⚠ Could not load unit icons from online source. Set a local icon folder in Scenario Builder → Settings, or check your internet connection.</span>
   <button class="small" style="margin-left:auto;background:transparent;border:1px solid #fff;color:#fff" onclick="this.parentElement.style.display='none'">Dismiss</button>
@@ -840,7 +858,7 @@
   <div class="spacer"></div>
   <label style="font-size:10px;color:var(--text-dim);display:flex;align-items:center;gap:4px" title="Unit icon scale">
     🔍 <input type="range" min="0.1" max="0.5" step="0.01" value="0.3" id="iconScaleSlider" style="width:70px;height:14px"
-      oninput="state.scenario.unitIconScale=parseFloat(this.value);document.getElementById('iconScaleVal').textContent=Math.round(this.value*100)+'%';renderAllUnits()">
+      oninput="state.scenario.unitIconScale=parseFloat(this.value);document.getElementById('iconScaleVal').textContent=Math.round(this.value*100)+'%';renderAllUnits();renderAllMarkers()">
     <span id="iconScaleVal" style="min-width:28px">30%</span>
   </label>
   <div class="sep"></div>
@@ -1273,17 +1291,17 @@ function getOrdersLayer(side) { return getLayerByRole('orders_' + side); }
 // MAP SETUP (with CDN tiles that work from file://)
 // ═══════════════════════════════════════════════════════════════════
 const map = L.map('map', {
-  center: [57.5, 24.5],
-  zoom: 8,
+  center: [57.0, 24.5],
+  zoom: 6,
   zoomControl: false
 });
 
 L.control.zoom({ position: 'bottomright' }).addTo(map);
-L.control.scale({ position: 'bottomright', metric: true, imperial: false, maxWidth: 120 }).addTo(map);
+L.control.scale({ position: 'bottomleft', metric: true, imperial: false, maxWidth: 120 }).addTo(map);
 
 // Custom vertical scale
 const VerticalScale = L.Control.extend({
-  options: { position: 'bottomright' },
+  options: { position: 'bottomleft' },
   onAdd: function(m) {
     const container = L.DomUtil.create('div', 'leaflet-control-vscale');
     const niceRound = d => {
@@ -1403,6 +1421,8 @@ function applyRole(role) {
   if (state.gameMode) closePanel();
   updateScenarioAccess();
   renderAll();
+  // Refresh Layers panel so role-restricted layers/drawings are immediately hidden
+  refreshLayersPanelIfOpen();
 }
 
 function updateScenarioAccess() {
@@ -1784,7 +1804,22 @@ function generateUnitSVG(unit, displayLabel, forceColor) {
 
 function generateSuspectedSVG(unit) {
   if (state.suspectedIconSVG) return state.suspectedIconSVG;
-  // Default: yellow question-mark diamond
+  // Try GitHub icon: Suspected_BLUFOR.svg / Suspected_OPFOR.svg
+  const sideKey = ICON_SIDE_MAP[unit.side] || 'BLUFOR';
+  const cacheKey = 'Suspected_' + sideKey;
+  if (iconCache[cacheKey]) return iconCache[cacheKey];
+  // Trigger async fetch for next render
+  const filename = cacheKey + '.svg';
+  const localFolder = (state.scenario.localIconFolder || '').trim();
+  const tryLocal = localFolder ? localFolder + (localFolder.endsWith('/') ? '' : '/') + filename : null;
+  const tryOnline = ICON_BASE_URL + filename;
+  (async () => {
+    let svg = null;
+    if (tryLocal) { try { const r = await fetch(tryLocal); if (r.ok) svg = await r.text(); } catch(e){} }
+    if (!svg) { try { const r = await fetch(tryOnline); if (r.ok) svg = await r.text(); } catch(e){} }
+    if (svg && svg.includes('<svg')) { iconCache[cacheKey] = svg; renderUnit(unit); }
+  })();
+  // Fallback: yellow question-mark diamond
   return `<svg xmlns="http://www.w3.org/2000/svg" width="38" height="38" viewBox="0 0 38 38">
     <path d="M19,4 L34,19 L19,34 L4,19 Z" fill="#f5c518" stroke="#000" stroke-width="2" stroke-dasharray="3,2"/>
     <text x="19" y="25" text-anchor="middle" font-size="18" font-family="Arial" fill="#000" font-weight="bold">?</text>
@@ -1839,9 +1874,13 @@ function renderUnit(unit) {
   let svg, iconSize, iconAnchor;
   if (displayMode === 'suspected') {
     svg = generateSuspectedSVG(unit);
+    const wM = svg.match(/width="(\d+)"/);
+    const hM = svg.match(/height="(\d+)"/);
+    const sw = wM ? parseInt(wM[1]) : 38;
+    const sh = hM ? parseInt(hM[1]) : 38;
     const sc = state.scenario.unitIconScale || 0.3;
-    iconSize = [Math.round(38 * sc), Math.round(38 * sc)];
-    iconAnchor = [Math.round(19 * sc), Math.round(19 * sc)];
+    iconSize = [Math.round(sw * sc), Math.round(sh * sc)];
+    iconAnchor = [Math.round(sw * sc / 2), Math.round(sh * sc / 2)];
   } else {
     // full or detected — both use unit SVG but with different label
     svg = unit.customSVG || generateUnitSVG(unit, displayLabel);
@@ -2080,11 +2119,14 @@ function renderMarker(m) {
 
   const mode = state.orderLabelMode || 'full';
   const ts = markerTimeSummary(m);
+  const msc = Math.max((state.scenario.unitIconScale || 0.3) * 2.5, 0.6);
+  const circSz = Math.round(22 * msc);
+  const fontSize = Math.round(11 * msc);
   let labelHtml;
   if (mode === 'off') {
-    labelHtml = `<div style="background:${m.color};color:#fff;border:2px solid #000;border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:11px;box-shadow:0 1px 3px rgba(0,0,0,0.4)">${esc(m.glyph)}</div>`;
+    labelHtml = `<div style="background:${m.color};color:#fff;border:2px solid #000;border-radius:50%;width:${circSz}px;height:${circSz}px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:${fontSize}px;box-shadow:0 1px 3px rgba(0,0,0,0.4)">${esc(m.glyph)}</div>`;
   } else if (mode === 'short') {
-    labelHtml = `<div style="background:${m.color};color:#fff;border:2px solid #000;border-radius:4px;padding:2px 6px;font-weight:700;font-size:11px;white-space:nowrap;box-shadow:0 1px 3px rgba(0,0,0,0.4)">${esc(m.glyph)} ${esc(m.name)}</div>`;
+    labelHtml = `<div style="background:${m.color};color:#fff;border:2px solid #000;border-radius:4px;padding:2px 6px;font-weight:700;font-size:${fontSize}px;white-space:nowrap;box-shadow:0 1px 3px rgba(0,0,0,0.4)">${esc(m.glyph)} ${esc(m.name)}</div>`;
   } else {
     // full: pill header + times + notes below
     const notesLine = m.notes ? `<div style="margin-top:2px;font-style:italic;max-width:220px;white-space:normal;line-height:1.25">${esc(m.notes)}</div>` : '';
@@ -2156,12 +2198,22 @@ function addDrawing(drawing) {
   drawing.id = drawing.id || uid();
   state.drawings.push(drawing);
   renderDrawings();
+  refreshLayersPanelIfOpen();
   return drawing;
 }
 
 function deleteDrawing(id) {
+  if (!confirm('Delete this drawing?')) return;
   state.drawings = state.drawings.filter(d => d.id !== id);
   renderDrawings();
+  refreshLayersPanelIfOpen();
+}
+
+function refreshLayersPanelIfOpen() {
+  const title = document.getElementById('panelTitle');
+  if (title && title.textContent === 'Layers') {
+    renderLayersPanel(document.getElementById('panelBody'));
+  }
 }
 
 function renderDrawings() {
@@ -2214,7 +2266,7 @@ function renderDrawings() {
         d.geometry.latlng = [p.lat, p.lng];
       });
       tmarker.on('click', () => {
-        if (currentTool === 'edit') openDrawingEditor(d);
+        if (!drawHandler || !drawHandler._enabled) openDrawingEditor(d);
       });
       LG.text.addLayer(tmarker);
       return;
@@ -2244,7 +2296,7 @@ function renderDrawings() {
         d.geometry.latlng = [p.lat, p.lng];
       });
       smarker.on('click', () => {
-        if (currentTool === 'edit') openDrawingEditor(d);
+        if (!drawHandler || !drawHandler._enabled) openDrawingEditor(d);
       });
       LG.symbols.addLayer(smarker);
       return;
@@ -2253,7 +2305,7 @@ function renderDrawings() {
     if (leafletLayer) {
       leafletLayer._drawingId = d.id;
       leafletLayer.on('click', () => {
-        if (currentTool === 'edit') openDrawingEditor(d);
+        if (!drawHandler || !drawHandler._enabled) openDrawingEditor(d);
       });
       if (d.properties && d.properties.label) {
         leafletLayer.bindTooltip(d.properties.label, { sticky: true, className: 'marker-tooltip' });
@@ -2345,7 +2397,7 @@ function saveDrawingEdit(id) {
     d.style.weight = parseInt(getVal('de_weight')) || 3;
     d.style.opacity = parseFloat(getVal('de_opacity')) || 1;
     if (d.type === 'polygon' || d.type === 'circle') {
-      d.style.fillOpacity = parseFloat(getVal('de_fillOpacity')) || 0.15;
+      d.style.fillOpacity = getVal('de_fillOpacity') !== '' ? parseFloat(getVal('de_fillOpacity')) : 0.15;
     }
     if (d.type === 'polyline' || d.type === 'polygon' || d.type === 'circle') {
       d.style.dashArray = getVal('de_dash') || null;
@@ -2364,16 +2416,17 @@ let measurePoints = [];
 let movementDraft = null; // {unitId, points, mode}
 
 const TOOL_LABELS = {
-  pan: 'Pan / Select',
+  pan: 'Select / Pan',
   unit: 'Click to place unit',
   move: 'Click unit to add order — then click waypoints · Enter to accept',
   marker: 'Click to place marker',
   symbol: 'Click to place symbol',
-  line: 'Click to draw — double-click to finish',
-  poly: 'Click to draw — double-click to finish',
+  line: 'Click to draw — double-click or Enter to finish',
+  poly: 'Click to draw — double-click or Enter to finish',
   circle: 'Click-drag to draw circle',
   text: 'Click to place text',
   measure: 'Click waypoints — double-click to finish',
+  angle: 'Click vertex, then two arm points',
   ring: 'Click to place range ring',
   edit: 'Click any item to edit or delete'
 };
@@ -2398,26 +2451,39 @@ function setTool(name) {
   // Clear movement draft
   if (name !== 'move') cancelMovementDraft();
 
-  map.getContainer().style.cursor = name === 'pan' ? '' : 'crosshair';
+  map.getContainer().style.cursor = name === 'pan' ? 'default' : 'crosshair';
 
   // Show/hide style bar for drawing tools
   const styleBar = document.getElementById('drawStyleBar');
   if (styleBar) {
     styleBar.style.display = ['line','poly','circle','ring'].includes(name) ? 'flex' : 'none';
+    // Mark the currently-selected dash swatch as active
+    styleBar.querySelectorAll('.dsb-swatch').forEach(s => s.classList.remove('active'));
+    const curDash = state.drawingStyle.dashArray;
+    const matchAttr = curDash === null ? 'solid' : curDash;
+    const active = styleBar.querySelector(`.dsb-swatch[data-dash="${matchAttr}"]`);
+    if (active) active.classList.add('active');
   }
+  // Show/hide snap bar for drawing tools
+  const snapBar = document.getElementById('snapBar');
+  if (snapBar) {
+    snapBar.style.display = ['line','poly'].includes(name) ? 'flex' : 'none';
+  }
+  // Clear angle measurement
+  anglePoints = [];
 
   const dash = state.drawingStyle.dashArray;
   const layerColor = getLayer(state.currentLayerId)?.color || '#e94560';
 
   // Leaflet.Draw for shape drawing
   if (name === 'line') {
-    drawHandler = new L.Draw.Polyline(map, { shapeOptions: { color: layerColor, weight: 3, dashArray: dash } });
+    drawHandler = new L.Draw.Polyline(map, { repeatMode: true, shapeOptions: { color: layerColor, weight: 3, dashArray: dash } });
     drawHandler.enable();
   } else if (name === 'poly') {
-    drawHandler = new L.Draw.Polygon(map, { shapeOptions: { color: layerColor, weight: 2, fillOpacity: 0.2, dashArray: dash } });
+    drawHandler = new L.Draw.Polygon(map, { repeatMode: true, shapeOptions: { color: layerColor, weight: 2, fillOpacity: 0.2, dashArray: dash } });
     drawHandler.enable();
   } else if (name === 'circle') {
-    drawHandler = new L.Draw.Circle(map, { shapeOptions: { color: layerColor, weight: 2, fillOpacity: 0.15, dashArray: dash } });
+    drawHandler = new L.Draw.Circle(map, { repeatMode: true, shapeOptions: { color: layerColor, weight: 2, fillOpacity: 0.15, dashArray: dash } });
     drawHandler.enable();
   }
 }
@@ -2457,16 +2523,104 @@ map.on(L.Draw.Event.CREATED, e => {
   }
   addDrawing(drawing);
 
-  // Re-enable for continuous drawing
-  if (drawHandler) drawHandler.enable();
+  // Continuous drawing handled by repeatMode: true on the handler
+});
+
+// Live measurement during polygon/polyline drawing
+map.on('draw:drawvertex', e => {
+  if (!drawHandler) return;
+  const poly = drawHandler._poly;
+  if (!poly) return;
+  const lls = poly.getLatLngs();
+  const pts = Array.isArray(lls[0]) ? lls[0] : lls;
+
+  // Apply snap to last placed vertex
+  if ((snapState.angle || snapState.length) && pts.length >= 2) {
+    const prev = pts[pts.length - 2];
+    const last = pts[pts.length - 1];
+    const [sLat, sLng] = snapPoint(prev.lat, prev.lng, last.lat, last.lng);
+    last.lat = sLat;
+    last.lng = sLng;
+    poly.setLatLngs(lls);
+    // Also update the marker in draw handler's guide layers
+    if (drawHandler._markers && drawHandler._markers.length > 0) {
+      const lastMarker = drawHandler._markers[drawHandler._markers.length - 1];
+      if (lastMarker) lastMarker.setLatLng([sLat, sLng]);
+    }
+  }
+
+  if (pts.length < 2) return;
+  // Total perimeter
+  let perim = 0;
+  for (let i = 1; i < pts.length; i++) perim += pts[i-1].distanceTo(pts[i]);
+  let msg = `Total: ${formatDist(perim)}`;
+  // Area for polygons (3+ points)
+  if (currentTool === 'poly' && pts.length >= 3) {
+    const ptArr = pts.map(p => [p.lat, p.lng]);
+    const area = polygonAreaM2(ptArr);
+    msg += ` · Area: ${formatArea(area)}`;
+  }
+  document.getElementById('measureReadout').textContent = msg;
+});
+
+map.on('draw:drawstop', () => {
+  document.getElementById('measureReadout').textContent = '';
+  document.getElementById('drawTooltip').style.display = 'none';
 });
 
 // ═══════════════════════════════════════════════════════════════════
 // MAP CLICK DISPATCHER
 // ═══════════════════════════════════════════════════════════════════
+function bearing(lat1, lng1, lat2, lng2) {
+  const dLng = (lng2 - lng1) * Math.PI / 180;
+  const la1 = lat1 * Math.PI / 180, la2 = lat2 * Math.PI / 180;
+  const y = Math.sin(dLng) * Math.cos(la2);
+  const x = Math.cos(la1) * Math.sin(la2) - Math.sin(la1) * Math.cos(la2) * Math.cos(dLng);
+  return ((Math.atan2(y, x) * 180 / Math.PI) + 360) % 360;
+}
+
 map.on('mousemove', e => {
   document.getElementById('coordDisplay').textContent =
     `${e.latlng.lat.toFixed(5)}°N  ${e.latlng.lng.toFixed(5)}°E`;
+
+  // Floating tooltip during drawing
+  const tip = document.getElementById('drawTooltip');
+  if (drawHandler && drawHandler._poly && ['line','poly'].includes(currentTool)) {
+    const pts = drawHandler._poly.getLatLngs();
+    const flat = Array.isArray(pts[0]) ? pts[0] : pts;
+    if (flat.length >= 1) {
+      const lastPt = flat[flat.length - 1];
+      let targetLat = e.latlng.lat, targetLng = e.latlng.lng;
+      // Apply snap preview
+      if (snapState.angle || snapState.length) {
+        [targetLat, targetLng] = snapPoint(lastPt.lat, lastPt.lng, targetLat, targetLng);
+      }
+      const segDist = L.latLng(lastPt).distanceTo(L.latLng(targetLat, targetLng));
+      const brg = bearing(lastPt.lat, lastPt.lng, targetLat, targetLng);
+      // Total distance of placed segments
+      let totalDist = 0;
+      for (let i = 1; i < flat.length; i++) totalDist += flat[i-1].distanceTo(flat[i]);
+      const grandTotal = totalDist + segDist;
+      let lines = [];
+      const snapTag = (snapState.angle || snapState.length) ? ' ⊞' : '';
+      lines.push(`${formatDist(segDist)} (this segment)${snapTag}`);
+      lines.push(`${brg.toFixed(1)}°`);
+      if (totalDist > 0) lines.push(`${formatDist(grandTotal)} (total)`);
+      if (currentTool === 'poly' && flat.length >= 2) {
+        const ptArr = [...flat.map(p => [p.lat, p.lng]), [targetLat, targetLng]];
+        const area = polygonAreaM2(ptArr);
+        lines.push(`Area: ${formatArea(area)}`);
+      }
+      lines.push(currentTool === 'poly' ? 'Click to continue drawing shape.' : 'Click to continue drawing line.');
+      tip.innerHTML = lines.join('<br>');
+      tip.style.display = 'block';
+      const pt = map.latLngToContainerPoint(e.latlng);
+      tip.style.left = (pt.x + 18) + 'px';
+      tip.style.top = (pt.y + 48) + 'px'; // offset for topbar
+    }
+  } else {
+    tip.style.display = 'none';
+  }
 });
 
 map.on('moveend', () => updateLightDisplay());
@@ -2478,6 +2632,7 @@ map.on('click', e => {
     case 'symbol':  showPlaceSymbolModal(e.latlng); break;
     case 'text':    showPlaceTextModal(e.latlng); break;
     case 'measure': addMeasurePoint(e.latlng); break;
+    case 'angle':   addAnglePoint(e.latlng); break;
     case 'ring':    showPlaceRingModal(e.latlng); break;
     case 'move':    if (movementDraft) addMovementPoint(e.latlng); break;
   }
@@ -2514,10 +2669,11 @@ function addMeasurePoint(latlng) {
     for (let i = 1; i < measurePoints.length; i++) {
       const a = L.latLng(measurePoints[i-1]), b = L.latLng(measurePoints[i]);
       const d = a.distanceTo(b);
+      const brg = bearing(a.lat, a.lng, b.lat, b.lng);
       total += d;
       const mid = L.latLng((a.lat+b.lat)/2, (a.lng+b.lng)/2);
       L.marker(mid, {
-        icon: L.divIcon({ className: 'measure-label', html: formatDist(d), iconSize: null, iconAnchor: [0,0] }),
+        icon: L.divIcon({ className: 'measure-label', html: `${formatDist(d)} · ${brg.toFixed(1)}°`, iconSize: null, iconAnchor: [0,0] }),
         interactive: false
       }).addTo(LG.measure);
     }
@@ -2528,6 +2684,133 @@ function addMeasurePoint(latlng) {
 function finishMeasure() {
   // keep on map until next tool
 }
+
+// ── ANGLE MEASUREMENT TOOL ──────────────────────────────────────
+let anglePoints = [];
+function addAnglePoint(latlng) {
+  anglePoints.push([latlng.lat, latlng.lng]);
+  L.circleMarker(latlng, { radius: 4, color: '#f5a623', fillColor: '#f5a623', fillOpacity: 1 }).addTo(LG.measure);
+
+  if (anglePoints.length >= 2) {
+    LG.measure.clearLayers();
+    anglePoints.forEach(p => {
+      L.circleMarker(p, { radius: 4, color: '#f5a623', fillColor: '#f5a623', fillOpacity: 1 }).addTo(LG.measure);
+    });
+  }
+
+  if (anglePoints.length === 2) {
+    L.polyline([anglePoints[0], anglePoints[1]], { color: '#f5a623', weight: 2, dashArray: '6,4' }).addTo(LG.measure);
+    const brg = bearing(anglePoints[0][0], anglePoints[0][1], anglePoints[1][0], anglePoints[1][1]);
+    document.getElementById('measureReadout').textContent = `Bearing: ${brg.toFixed(1)}° — click third point for angle`;
+  }
+
+  if (anglePoints.length === 3) {
+    L.polyline([anglePoints[0], anglePoints[1]], { color: '#f5a623', weight: 2, dashArray: '6,4' }).addTo(LG.measure);
+    L.polyline([anglePoints[1], anglePoints[2]], { color: '#f5a623', weight: 2, dashArray: '6,4' }).addTo(LG.measure);
+    // Compute angle at vertex (point 1)
+    const v = anglePoints[1];
+    const a = anglePoints[0];
+    const b = anglePoints[2];
+    const brg1 = bearing(v[0], v[1], a[0], a[1]);
+    const brg2 = bearing(v[0], v[1], b[0], b[1]);
+    let angle = Math.abs(brg2 - brg1);
+    if (angle > 180) angle = 360 - angle;
+    // Draw arc to visualize angle
+    const arcR = L.latLng(v).distanceTo(L.latLng(a)) * 0.3;
+    const cosV = Math.cos(v[0] * Math.PI / 180);
+    const startAngle = brg1 * Math.PI / 180;
+    let endAngle = brg2 * Math.PI / 180;
+    // Choose shorter arc
+    let diff = endAngle - startAngle;
+    if (diff > Math.PI) diff -= 2 * Math.PI;
+    if (diff < -Math.PI) diff += 2 * Math.PI;
+    const arcPts = [];
+    const steps = 24;
+    for (let i = 0; i <= steps; i++) {
+      const th = startAngle + diff * i / steps;
+      // Bearing convention: 0=N, 90=E. Convert to math: x=sin(th), y=cos(th)
+      arcPts.push([
+        v[0] + Math.cos(th) * arcR / 111320,
+        v[1] + Math.sin(th) * arcR / (cosV * 111320)
+      ]);
+    }
+    L.polyline(arcPts, { color: '#f5a623', weight: 1.5, dashArray: '3,3' }).addTo(LG.measure);
+    // Label
+    const midTh = startAngle + diff / 2;
+    const labelPt = [
+      v[0] + Math.cos(midTh) * arcR * 1.3 / 111320,
+      v[1] + Math.sin(midTh) * arcR * 1.3 / (cosV * 111320)
+    ];
+    L.marker(labelPt, {
+      icon: L.divIcon({ className: 'measure-label', html: `${angle.toFixed(1)}°`, iconSize: null, iconAnchor: [0, 0] }),
+      interactive: false
+    }).addTo(LG.measure);
+    const dist1 = L.latLng(v).distanceTo(L.latLng(a));
+    const dist2 = L.latLng(v).distanceTo(L.latLng(b));
+    document.getElementById('measureReadout').textContent =
+      `Angle: ${angle.toFixed(1)}° · Arms: ${formatDist(dist1)}, ${formatDist(dist2)} · Bearings: ${brg1.toFixed(1)}°, ${brg2.toFixed(1)}°`;
+    // Reset for next measurement
+    anglePoints = [];
+  }
+}
+
+// ── SNAP STATE ──────────────────────────────────────────────────
+let snapState = { angle: false, angleDeg: 45, length: false, lengthM: 50 };
+function updateSnapState() {
+  snapState.angle = document.getElementById('snapAngle')?.checked || false;
+  snapState.angleDeg = parseInt(document.getElementById('snapAngleDeg')?.value) || 45;
+  snapState.length = document.getElementById('snapLength')?.checked || false;
+  snapState.lengthM = parseInt(document.getElementById('snapLengthM')?.value) || 50;
+}
+
+function snapPoint(fromLat, fromLng, toLat, toLng) {
+  if (!snapState.angle && !snapState.length) return [toLat, toLng];
+  const cosLat = Math.cos(fromLat * Math.PI / 180);
+  const dx = (toLng - fromLng) * cosLat * 111320;
+  const dy = (toLat - fromLat) * 111320;
+  let dist = Math.sqrt(dx * dx + dy * dy);
+  let brg = Math.atan2(dx, dy); // radians, 0=N
+
+  if (snapState.angle) {
+    const step = snapState.angleDeg * Math.PI / 180;
+    brg = Math.round(brg / step) * step;
+  }
+  if (snapState.length && dist > 0) {
+    dist = Math.round(dist / snapState.lengthM) * snapState.lengthM;
+    if (dist < snapState.lengthM) dist = snapState.lengthM;
+  }
+
+  const sLat = fromLat + Math.cos(brg) * dist / 111320;
+  const sLng = fromLng + Math.sin(brg) * dist / (cosLat * 111320);
+  return [sLat, sLng];
+}
+
+// Patch L.Draw.Polyline prototype so the rubber-band guide line snaps live (WYSIWYG).
+// This runs once; L.Draw.Polygon inherits from Polyline so both benefit.
+(function patchDrawSnap() {
+  if (typeof L === 'undefined' || !L.Draw || !L.Draw.Polyline) return;
+  if (L.Draw.Polyline.prototype._snapPatched) return;
+  const original = L.Draw.Polyline.prototype._onMouseMove;
+  L.Draw.Polyline.prototype._onMouseMove = function(e) {
+    original.call(this, e);
+    if (typeof snapState === 'undefined') return;
+    if (!(snapState.angle || snapState.length)) return;
+    const poly = this._poly;
+    if (!poly || !this._currentLatLng) return;
+    const lls = poly.getLatLngs();
+    const pts = Array.isArray(lls[0]) ? lls[0] : lls;
+    if (pts.length < 1) return;
+    const lastPt = pts[pts.length - 1];
+    const [sLat, sLng] = snapPoint(lastPt.lat, lastPt.lng, this._currentLatLng.lat, this._currentLatLng.lng);
+    const snapped = L.latLng(sLat, sLng);
+    this._currentLatLng = snapped;
+    const newPos = this._map.latLngToLayerPoint(snapped);
+    if (typeof this._updateGuide === 'function') this._updateGuide(newPos);
+    if (this._mouseMarker) this._mouseMarker.setLatLng(snapped);
+    if (typeof this._updateTooltip === 'function') this._updateTooltip(snapped);
+  };
+  L.Draw.Polyline.prototype._snapPatched = true;
+})();
 
 // ═══════════════════════════════════════════════════════════════════
 // MOVEMENT ORDERS — APP-6-ish double parallel lines + arrowhead
@@ -2950,7 +3233,7 @@ function renderMovementOrders() {
     const typeDef = getOrderType(o.orderType || 'move');
     const isPath = typeDef.kind === 'path' && o.points.length >= 2;
     const isArea = typeDef.kind === 'area';
-    const handleClick = () => { if (currentTool === 'edit') openMovementOrderEditor(o); };
+    const handleClick = () => { if (currentTool === 'edit' || currentTool === 'pan') openMovementOrderEditor(o); };
 
     // Area orders: polygon or point
     if (isArea && o.points.length > 0) {
@@ -3845,14 +4128,34 @@ function showPlaceRingModal(latlng) {
 function confirmPlaceRing(lat, lng) {
   const radii = document.getElementById('pr_radii').value.split(',').map(r => parseFloat(r.trim())).filter(r => r > 0);
   const color = document.getElementById('pr_color').value;
-  const label = document.getElementById('pr_label').value;
+  const label = document.getElementById('pr_label').value || 'Range ring';
+  const groupId = uid();
+  const cosLat = Math.cos(lat * Math.PI / 180);
+  const crossSize = Math.max(...radii) * 0.04; // cross arm length proportional to largest ring
+
+  // Cross center marker — two short perpendicular lines
+  const crossArm = crossSize / 111320;
+  const crossArmLng = crossSize / (cosLat * 111320);
+  addDrawing({
+    layerId: state.currentLayerId, type: 'polyline',
+    geometry: { points: [[lat - crossArm, lng], [lat + crossArm, lng]] },
+    style: { color, weight: 2 },
+    properties: { label: 'Center', group: groupId, groupLabel: label, groupType: 'Range ring' }
+  });
+  addDrawing({
+    layerId: state.currentLayerId, type: 'polyline',
+    geometry: { points: [[lat, lng - crossArmLng], [lat, lng + crossArmLng]] },
+    style: { color, weight: 2 },
+    properties: { label: 'Center', group: groupId, groupLabel: label, groupType: 'Range ring' }
+  });
+
+  // Ring circles
   radii.forEach(r => {
     addDrawing({
-      layerId: state.currentLayerId,
-      type: 'circle',
+      layerId: state.currentLayerId, type: 'circle',
       geometry: { center: [lat, lng], radius: r },
       style: { color, weight: 1, fillOpacity: 0, dashArray: '4,4' },
-      properties: { label: label ? `${label} (${formatDist(r)})` : formatDist(r) }
+      properties: { label: `${formatDist(r)}`, group: groupId, groupLabel: label, groupType: 'Range ring' }
     });
   });
 }
@@ -3957,7 +4260,7 @@ function renderScenGeneral(c) {
       <input type="text" value="${esc(s.localIconFolder||'')}" oninput="state.scenario.localIconFolder=this.value" placeholder="e.g. icons/ or /path/to/icons"></div>
     <div class="field-group"><label>Unit Icon Scale: ${Math.round((s.unitIconScale||0.3)*100)}%</label>
       <input type="range" min="${s.iconScaleMin||0.1}" max="${s.iconScaleMax||0.5}" step="0.01" value="${s.unitIconScale||0.3}"
-        oninput="state.scenario.unitIconScale=parseFloat(this.value);this.previousElementSibling.textContent='Unit Icon Scale: '+Math.round(this.value*100)+'%';document.getElementById('iconScaleSlider').value=this.value;document.getElementById('iconScaleSlider').min=state.scenario.iconScaleMin||0.1;document.getElementById('iconScaleSlider').max=state.scenario.iconScaleMax||0.5;document.getElementById('iconScaleVal').textContent=Math.round(this.value*100)+'%';renderAllUnits()">
+        oninput="state.scenario.unitIconScale=parseFloat(this.value);this.previousElementSibling.textContent='Unit Icon Scale: '+Math.round(this.value*100)+'%';document.getElementById('iconScaleSlider').value=this.value;document.getElementById('iconScaleSlider').min=state.scenario.iconScaleMin||0.1;document.getElementById('iconScaleSlider').max=state.scenario.iconScaleMax||0.5;document.getElementById('iconScaleVal').textContent=Math.round(this.value*100)+'%';renderAllUnits();renderAllMarkers()">
     </div>
     <div class="field-group row">
       <div><label>Scale Min (%)</label>
@@ -4532,24 +4835,195 @@ function renderScenDice(c) {
 }
 
 // ── LAYERS PANEL ─────────────────────────────────────────────────
+const layerObjectsExpanded = {};
+const layerGroupExpanded = {};
 function renderLayersPanel(body) {
+  const role = state.viewRole;
+  const isUmpire = role === 'umpire';
   let html = '<div class="section-head">Map Layers</div>';
   state.layers.forEach(l => {
+    const canSee = isUmpire || l.visibility === 'all' || l.visibility === role;
+    if (!canSee) return;
     const visBadgeCls = 'vis-' + l.visibility;
     const isCurrent = l.id === state.currentLayerId;
-    html += `<div class="layer-item ${isCurrent?'current':''}">
-      <input type="checkbox" ${l.visible?'checked':''} onchange="toggleLayerVisible('${l.id}')">
+    const drawings = state.drawings.filter(d => d.layerId === l.id);
+    const expanded = layerObjectsExpanded[l.id];
+    html += `<div class="layer-item ${isCurrent?'current':''}" style="cursor:pointer" onclick="setCurrentLayer('${l.id}')">
+      <input type="checkbox" ${l.visible?'checked':''} onclick="event.stopPropagation()" onchange="toggleLayerVisible('${l.id}')">
       <span class="layer-dot" style="background:${l.color}"></span>
-      <span class="name">${esc(l.name)}</span>
+      <span class="name" style="flex:1">${esc(l.name)}</span>
       <span class="vis-badge ${visBadgeCls}">${l.visibility}</span>
-      <button class="small" onclick="setCurrentLayer('${l.id}')" ${isCurrent?'disabled':''}>Use</button>
-      <button class="small" onclick="editLayer('${l.id}')">Edit</button>
-      <button class="small danger" onclick="confirmDeleteLayer('${l.id}')">×</button>
+      <span style="font-size:10px;color:var(--text-dim)">(${drawings.length})</span>
+      ${drawings.length > 0 ? `<button class="small" style="font-size:10px;padding:1px 4px" title="Show/hide objects and markers" onclick="event.stopPropagation();layerObjectsExpanded['${l.id}']=!layerObjectsExpanded['${l.id}'];renderLayersPanel(document.getElementById('panelBody'))">${expanded?'▼':'▶'}</button>` : ''}
+      ${isUmpire ? `<button class="small" onclick="event.stopPropagation();editLayer('${l.id}')">Edit</button>
+      <button class="small danger" onclick="event.stopPropagation();confirmDeleteLayer('${l.id}')">×</button>` : ''}
     </div>`;
+    if (expanded && drawings.length > 0) {
+      html += `<div style="padding:0 0 6px 20px;font-size:11px">`;
+      const grouped = {};
+      const ungrouped = [];
+      drawings.forEach(d => {
+        const gid = d.properties?.group;
+        if (gid) {
+          if (!grouped[gid]) grouped[gid] = { label: d.properties?.groupLabel || '', type: d.properties?.groupType || '', items: [] };
+          grouped[gid].items.push(d);
+        } else { ungrouped.push(d); }
+      });
+      Object.entries(grouped).forEach(([gid, g]) => {
+        const gExpanded = layerGroupExpanded[gid] !== false;
+        const isRangeRing = g.type === 'Range ring';
+        // Range ring: bold label (or fallback), show centre coords in header, collapse centre marker lines into one row
+        if (isRangeRing) {
+          const centerItems = g.items.filter(d => d.properties?.label === 'Center');
+          const ringItems = g.items.filter(d => d.properties?.label !== 'Center');
+          const labelText = g.label || 'Range ring';
+          // Derive centre coordinates: circles have geometry.center; else use first polyline midpoint
+          let centerLat = null, centerLng = null, centerColor = null;
+          if (ringItems.length > 0 && ringItems[0].geometry?.center) {
+            centerLat = ringItems[0].geometry.center[0];
+            centerLng = ringItems[0].geometry.center[1];
+          } else if (centerItems.length > 0 && centerItems[0].geometry?.points?.length >= 2) {
+            const p1 = centerItems[0].geometry.points[0];
+            const p2 = centerItems[0].geometry.points[1];
+            centerLat = (p1[0] + p2[0]) / 2;
+            centerLng = (p1[1] + p2[1]) / 2;
+          }
+          if (centerItems.length > 0) centerColor = centerItems[0].style?.color || l.color;
+          const coordStr = (centerLat !== null) ? ` <span style="font-weight:400;color:var(--text-dim);font-size:9px">${centerLat.toFixed(5)}°N ${centerLng.toFixed(5)}°E</span>` : '';
+          const allIds = g.items.map(d => "'" + d.id + "'").join(',');
+          const centerIds = centerItems.map(d => "'" + d.id + "'").join(',');
+          html += `<div style="margin-bottom:4px">
+            <div class="inline-row" style="font-size:10px;padding:2px 0;align-items:center">
+              <button class="small" style="font-size:10px;padding:1px 4px" title="Show/hide ring items"
+                onclick="event.stopPropagation();layerGroupExpanded['${gid}']=!(layerGroupExpanded['${gid}']!==false);renderLayersPanel(document.getElementById('panelBody'))">${gExpanded?'\u25bc':'\u25b6'}</button>
+              <span style="flex:1"><b>${esc(labelText)}</b>${coordStr}</span>
+              <button class="small danger" style="font-size:9px;padding:1px 4px" onclick="event.stopPropagation();deleteDrawingGroup([${allIds}])">×</button>
+            </div>`;
+          if (gExpanded) {
+            html += `<div style="padding-left:12px">`;
+            // Single condensed Center row (no toggle, no count, colour swatch, delete only)
+            if (centerItems.length > 0) {
+              html += `<div class="list-item" style="padding:2px 4px">
+                <span style="color:${centerColor}">●</span>
+                <span class="name" style="font-size:11px;flex:1">Center</span>
+                <button class="small danger" style="font-size:9px;padding:1px 4px" onclick="event.stopPropagation();deleteDrawingGroup([${centerIds}])">×</button>
+              </div>`;
+            }
+            ringItems.forEach(d => { html += drawingListItem(d, l); });
+            html += `</div>`;
+          }
+          html += `</div>`;
+          return;
+        }
+        const hasLabel = g.label && g.label !== g.type;
+        const headerText = hasLabel ? `${esc(g.label)} \u00b7 ${esc(g.type)}` : esc(g.type || g.label || 'Group');
+        const allIds = g.items.map(d => "'" + d.id + "'").join(',');
+        html += `<div style="margin-bottom:4px">
+          <div class="inline-row" style="font-size:10px;padding:2px 0;align-items:center">
+            <button class="small" style="font-size:10px;padding:1px 4px" title="Show/hide objects and markers"
+              onclick="event.stopPropagation();layerGroupExpanded['${gid}']=!(layerGroupExpanded['${gid}']!==false);renderLayersPanel(document.getElementById('panelBody'))">${gExpanded?'\u25bc':'\u25b6'}</button>
+            <span style="font-weight:600;color:var(--accent);flex:1">${headerText} (${g.items.length})</span>
+            <button class="small danger" style="font-size:9px;padding:1px 4px" onclick="event.stopPropagation();deleteDrawingGroup([${allIds}])">×</button>
+          </div>`;
+        if (gExpanded) {
+          // Subgroup items sharing same label if >1
+          const subgroups = {};
+          g.items.forEach(d => {
+            const key = d.properties?.label || '';
+            if (!subgroups[key]) subgroups[key] = [];
+            subgroups[key].push(d);
+          });
+          const needsSub = Object.values(subgroups).some(a => a.length > 1);
+          if (needsSub) {
+            Object.entries(subgroups).forEach(([lbl, items]) => {
+              if (items.length > 1) {
+                const sgKey = gid + '_' + lbl;
+                const sgExp = layerGroupExpanded[sgKey] !== false;
+                const sgIds = items.map(d => "'" + d.id + "'").join(',');
+                html += `<div style="padding-left:12px">
+                  <div class="inline-row" style="font-size:10px;padding:1px 0;align-items:center">
+                    <button class="small" style="font-size:9px;padding:1px 3px" title="Show/hide objects and markers"
+                      onclick="event.stopPropagation();layerGroupExpanded['${sgKey}']=!(layerGroupExpanded['${sgKey}']!==false);renderLayersPanel(document.getElementById('panelBody'))">${sgExp?'\u25bc':'\u25b6'}</button>
+                    <span style="font-weight:600;color:var(--text-dim);flex:1">${esc(lbl || 'Items')} (${items.length})</span>
+                    <button class="small danger" style="font-size:9px;padding:1px 4px" onclick="event.stopPropagation();deleteDrawingGroup([${sgIds}])">×</button>
+                  </div>`;
+                if (sgExp) {
+                  html += `<div style="padding-left:12px">`;
+                  items.forEach(d => { html += drawingListItem(d, l); });
+                  html += `</div>`;
+                }
+                html += `</div>`;
+              } else {
+                html += `<div style="padding-left:12px">`;
+                items.forEach(d => { html += drawingListItem(d, l); });
+                html += `</div>`;
+              }
+            });
+          } else {
+            html += `<div style="padding-left:12px">`;
+            g.items.forEach(d => { html += drawingListItem(d, l); });
+            html += `</div>`;
+          }
+        }
+        html += `</div>`;
+      });
+      ungrouped.forEach(d => { html += drawingListItem(d, l); });
+      html += `</div>`;
+    }
   });
   html += `<div class="btn-row"><button onclick="createNewLayer()">+ New Layer</button></div>
-    <p style="font-size:11px;color:var(--text-dim);margin-top:10px">Umpire role sees all layers. BLUFOR/OPFOR see only "all" + their own side's layers.</p>`;
+    <p style="font-size:11px;color:var(--text-dim);margin-top:10px">Click a layer to select it. Expand \u25b6 to see objects.</p>`;
   body.innerHTML = html;
+}
+
+function deleteDrawingGroup(ids) {
+  if (!confirm('Delete this group and all its objects?')) return;
+  state.drawings = state.drawings.filter(d => !ids.includes(d.id));
+  renderDrawings();
+  refreshLayersPanelIfOpen();
+}
+
+function drawingListItem(d, l) {
+  const dlabel = d.properties?.label || '';
+  let desc = '';
+  if (d.type === 'polyline') {
+    const pts = d.geometry.points || [];
+    const dist = pts.length >= 2 ? computePolylineDistance(pts) : 0;
+    desc = `Line · ${formatDist(dist)}`;
+  } else if (d.type === 'polygon') {
+    const pts = d.geometry.points || [];
+    const area = pts.length >= 3 ? polygonAreaM2(pts) : 0;
+    desc = `Polygon · ${formatArea(area)}`;
+  } else if (d.type === 'circle') {
+    desc = `Circle · r=${formatDist(d.geometry.radius)}`;
+  } else if (d.type === 'text') {
+    desc = `Text`;
+  } else if (d.type === 'symbol') {
+    const tmpl = state.symbolTemplates.find(s => s.id === d.properties?.symbolId);
+    desc = `Symbol: ${esc(tmpl?.name || '?')}`;
+  } else {
+    desc = d.type || '?';
+  }
+  const displayName = dlabel || 'No label';
+  return `<div class="list-item" style="padding:2px 4px;cursor:pointer" onclick="panToDrawing('${d.id}');openDrawingEditor(state.drawings.find(x=>x.id==='${d.id}'))">
+    <span style="color:${d.style?.color||l.color}">●</span>
+    <span class="name" style="font-size:11px"><b>${esc(displayName)}</b> · ${desc}</span>
+    <button class="small danger" style="font-size:9px;padding:1px 4px" onclick="event.stopPropagation();deleteDrawing('${d.id}')">×</button>
+  </div>`;
+}
+
+function panToDrawing(drawingId) {
+  const d = state.drawings.find(x => x.id === drawingId);
+  if (!d) return;
+  if (d.type === 'circle') {
+    map.setView(d.geometry.center, map.getZoom());
+  } else if (d.geometry.latlng) {
+    map.setView(d.geometry.latlng, map.getZoom());
+  } else if (d.geometry.points && d.geometry.points.length > 0) {
+    const pts = d.geometry.points;
+    const midIdx = Math.floor(pts.length / 2);
+    map.setView(pts[midIdx], map.getZoom());
+  }
 }
 
 function toggleLayerVisible(id) {
@@ -4564,6 +5038,10 @@ function setCurrentLayer(id) {
   state.currentLayerId = id;
   updateCurrentLayerDisplay();
   renderLayersPanel(document.getElementById('panelBody'));
+  // Re-initialize drawing tool with new layer color if a drawing tool is active
+  if (['line','poly','circle'].includes(currentTool)) {
+    setTool(currentTool);
+  }
 }
 
 function createNewLayer() {
@@ -4695,14 +5173,14 @@ function renderUnitEditPanel(body, unit) {
     notesHistoryHTML += `</div>`;
   }
 
-  const isUmpire = state.viewRole === 'umpire' || !state.gameMode;
+  const isUmpire = state.viewRole === 'umpire';
   // Visibility checkbox helper — umpire only
   const visChk = (field) => {
     if (!isUmpire) return '';
     const fv = unit.fieldVisibility || {};
     const obj = fv[field] || {};
     return `<label title="Tooltip" style="font-size:10px;white-space:nowrap"><input type="checkbox" ${obj.showTooltip?'checked':''} onchange="ensureFV('${unit.id}','${field}').showTooltip=this.checked">Tip</label>
-            <label title="Opponent" style="font-size:10px;white-space:nowrap"><input type="checkbox" ${obj.showOpponent?'checked':''} onchange="ensureFV('${unit.id}','${field}').showOpponent=this.checked">Opp</label>`;
+            <label title="Opponent" style="font-size:10px;white-space:nowrap"><input type="checkbox" ${obj.showOpponent?'checked':''} onchange="ensureFV('${unit.id}','${field}').showOpponent=this.checked";padding-right:4px">Opp</label>`;
   };
 
   const activeState = getActiveState(unit);
@@ -4758,8 +5236,9 @@ function renderUnitEditPanel(body, unit) {
     ${orderHTML}
 
     <div class="section-head">Notes</div>
-    <textarea oninput="getUnit('${unit.id}').notes=this.value" placeholder="Free-form notes, saved per-turn on End Turn">${esc(unit.notes)}</textarea>
-    ${notesHistoryHTML}`;
+    <textarea style="width:100%;resize:vertical;min-height:60px" oninput="getUnit('${unit.id}').notes=this.value" placeholder="Free-form notes, saved per-turn on End Turn">${esc(unit.notes)}</textarea>
+    ${notesHistoryHTML}
+    ${detectionHTML}`;
 
   // ── Active state content ──
   if (activeState) {
@@ -4794,7 +5273,7 @@ function renderUnitEditPanel(body, unit) {
             <input type="text" value="${esc(String(s.value||''))}" placeholder="Value" oninput="${sp}.stats[${idx}].value=this.value" style="flex:1">
             <input type="text" value="${esc(s.notes||'')}" placeholder="Notes" oninput="${sp}.stats[${idx}].notes=this.value" style="flex:2">
             <label title="Tooltip" style="font-size:10px;white-space:nowrap"><input type="checkbox" ${s.showTooltip?'checked':''} onchange="${sp}.stats[${idx}].showTooltip=this.checked">Tip</label>
-            <label title="Opponent" style="font-size:10px;white-space:nowrap"><input type="checkbox" ${s.showOpponent?'checked':''} onchange="${sp}.stats[${idx}].showOpponent=this.checked">Opp</label>
+            <label title="Opponent" style="font-size:10px;white-space:nowrap"><input type="checkbox" ${s.showOpponent?'checked':''} onchange="${sp}.stats[${idx}].showOpponent=this.checked";padding-right:4px">Opp</label>
           </div>
         </div>`;
       } else {
@@ -4819,7 +5298,7 @@ function renderUnitEditPanel(body, unit) {
           <input type="number" value="${m.value}" step="0.25" min="0" style="width:55px"
             oninput="${sp}.movement[${idx}].value=parseFloat(this.value)||0">
           <label title="Tooltip" style="font-size:10px;white-space:nowrap"><input type="checkbox" ${m.showTooltip?'checked':''} onchange="${sp}.movement[${idx}].showTooltip=this.checked">Tip</label>
-          <label title="Opponent" style="font-size:10px;white-space:nowrap"><input type="checkbox" ${m.showOpponent?'checked':''} onchange="${sp}.movement[${idx}].showOpponent=this.checked">Opp</label>
+          <label title="Opponent" style="font-size:10px;white-space:nowrap"><input type="checkbox" ${m.showOpponent?'checked':''} onchange="${sp}.movement[${idx}].showOpponent=this.checked";padding-right:4px">Opp</label>
           <button class="small danger" onclick="${sp}.movement.splice(${idx},1);renderUnitEditPanel(document.getElementById('panelBody'),getUnit('${unit.id}'))">×</button>
         </div>`;
       } else {
@@ -4845,7 +5324,7 @@ function renderUnitEditPanel(body, unit) {
           <span style="font-size:10px">m</span>
           <input type="color" value="${r.color||'#ff0000'}" oninput="${sp}.rangeRings[${idx}].color=this.value;renderUnitRangeRings(getUnit('${unit.id}'))">
           <label title="Tooltip" style="font-size:10px;white-space:nowrap"><input type="checkbox" ${r.showTooltip?'checked':''} onchange="${sp}.rangeRings[${idx}].showTooltip=this.checked">Tip</label>
-          <label title="Opponent" style="font-size:10px;white-space:nowrap"><input type="checkbox" ${r.showOpponent?'checked':''} onchange="${sp}.rangeRings[${idx}].showOpponent=this.checked">Opp</label>
+          <label title="Opponent" style="font-size:10px;white-space:nowrap"><input type="checkbox" ${r.showOpponent?'checked':''} onchange="${sp}.rangeRings[${idx}].showOpponent=this.checked";padding-right:4px">Opp</label>
           <button class="small danger" onclick="${sp}.rangeRings.splice(${idx},1);renderUnitRangeRings(getUnit('${unit.id}'));renderUnitEditPanel(document.getElementById('panelBody'),getUnit('${unit.id}'))">×</button>
         </div>`;
       } else {
@@ -4863,7 +5342,7 @@ function renderUnitEditPanel(body, unit) {
     html += `<p style="font-size:11px;color:var(--text-dim)">No states defined. Add a state to configure unit capabilities.</p>`;
   }
 
-  html += `${detectionHTML}
+  html += `
     <div class="btn-row">
       <button onclick="map.setView(getUnit('${unit.id}').latlng,map.getZoom())">Pan To</button>
       ${isUmpire ? `<button class="danger" onclick="if(confirm('Withdraw unit?'))withdrawUnit('${unit.id}')">Withdraw Unit</button>` : ''}
@@ -5115,11 +5594,30 @@ function loadTurnSnapshot(idx) {
 // ═══════════════════════════════════════════════════════════════════
 function endTurn() {
   const pending = state.movementOrders.length;
-  const msg = `End Turn ${state.turnNumber}?\n\n` +
-    `This will snapshot current state (units, markers, notes, orders) and advance to Turn ${state.turnNumber + 1}.\n\n` +
-    `Pending movement orders: ${pending}\n\n` +
-    `Continue?`;
-  if (!confirm(msg)) return;
+  const curTurn = state.turnNumber;
+  showModal(`
+    <h3>End Turn ${curTurn}?</h3>
+    <p style="margin:8px 0;line-height:1.4">
+      This will snapshot current state (units, markers, notes, orders) and advance to Turn ${curTurn + 1}.
+    </p>
+    <p style="margin:8px 0;color:var(--text-dim);font-size:12px">
+      Pending movement orders: <b>${pending}</b>
+    </p>
+    <div class="field-group" style="margin-top:12px">
+      <label style="display:flex;align-items:center;gap:6px;cursor:pointer">
+        <input type="checkbox" id="et_saveFile" checked>
+        <span>Save scenario file (with <code>_END_OF_TURN</code> suffix)</span>
+      </label>
+    </div>
+    <div class="btn-row">
+      <button onclick="confirmEndTurn();this.closest('.modal-overlay').remove()">End Turn</button>
+      <button onclick="this.closest('.modal-overlay').remove()">Cancel</button>
+    </div>`);
+}
+
+function confirmEndTurn() {
+  const saveFile = document.getElementById('et_saveFile')?.checked;
+  const endedTurn = state.turnNumber;
 
   // Save notes snapshot per unit for this turn
   state.units.forEach(u => {
@@ -5141,6 +5639,16 @@ function endTurn() {
   logAction(`=== End Turn ${state.turnNumber - 1} ===`, 'turn');
   document.getElementById('turnDisplay').textContent = `Turn ${state.turnNumber}`;
   updateScenTimeDisplay();
+
+  // Save scenario file with _END_OF_TURN suffix if requested
+  if (saveFile) {
+    try {
+      const data = cloneDeep(state);
+      downloadJSON(data, `scenario-${state.scenario.name.replace(/\s+/g,'_')}-T${endedTurn}_END_OF_TURN.json`);
+    } catch (err) {
+      alert('Failed to save scenario file: ' + err.message);
+    }
+  }
 }
 
 function logCommitted(text, type) {
@@ -5380,8 +5888,8 @@ document.addEventListener('keydown', e => {
     case 'c': case 'C': setTool('circle'); break;
     case 't': case 'T': setTool('text'); break;
     case 'm': case 'M': setTool('measure'); break;
+    case 'a': case 'A': setTool('angle'); break;
     case 'r': case 'R': setTool('ring'); break;
-    case 'e': case 'E': setTool('edit'); break;
     case 'z': case 'Z': if (moveUndoUnitId || moveUndoMarkerId) undoLastMove(); break;
   }
 });
