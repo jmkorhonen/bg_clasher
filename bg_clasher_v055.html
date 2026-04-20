@@ -94,6 +94,7 @@
   button.danger { background: #7a2020; }
   button.danger:hover { background: var(--accent); }
   button.small { padding: 2px 6px; font-size: 11px; }
+  button:disabled { opacity: 0.35; cursor: not-allowed; filter: grayscale(0.6); }
   button.ghost { background: transparent; }
   button.ghost:hover { background: var(--panel-border); }
 
@@ -292,7 +293,7 @@
     position: absolute;
     top: 40px;
     right: 0;
-    width: 420px;
+    width: 500px;
     min-width: 280px;
     max-width: 80vw;
     bottom: 28px;
@@ -350,11 +351,13 @@
 
   .tabs {
     display: flex;
+    flex-wrap: wrap;
     border-bottom: 1px solid var(--panel-border);
     background: var(--bg-alt);
   }
   .tabs button {
-    flex: 1;
+    flex: 1 1 auto;
+    min-width: 70px;
     border: none;
     border-bottom: 2px solid transparent;
     border-radius: 0;
@@ -764,14 +767,16 @@
     <button data-role="opfor" onclick="setRole('opfor')">OPFOR</button>
   </div>
   <button onclick="toggleOrderTooltips()" id="toggleTooltipsBtn" title="Cycle order/marker label detail (full/short/off)">📋</button>
+  <button onclick="toggleUnitAnchors()" id="toggleAnchorsBtn" title="Show/hide unit & marker anchor crosshairs (useful for verifying position vs. range rings)">✛</button>
   <button onclick="toggleGameMode()" id="gameModeBtn" title="Game Mode: confirm role handover + restrict scenario access">🎮 Game Off</button>
   <div class="spacer"></div>
   <button onclick="openPanel('scenario')" id="scenarioBtn">Scenario</button>
-  <button onclick="openPanel('sync')">Sync</button>
+  <button onclick="openPanel('sync')">Sync Matrix</button>
   <button onclick="openPanel('units')">Units</button>
   <button onclick="openPanel('markers')">Game Markers</button>
   <button onclick="openPanel('log')">Log</button>
   <button onclick="openPanel('turns')">Turns</button>
+  <button onclick="openPanel('help')" onmouseenter="showAllTooltips()" onmouseleave="hideAllTooltips()" title="Open manual · hover to reveal all button tooltips">?</button>
   <button onclick="endTurn()" style="background: var(--accent)">End Turn</button>
   <button onclick="exportScenario()" title="Export full scenario">💾</button>
   <button onclick="document.getElementById('importInput').click()" title="Import scenario">📂</button>
@@ -847,8 +852,9 @@
 
 <div id="drawTooltip" style="display:none;position:fixed;z-index:2000;background:var(--panel);border:1px solid var(--panel-border);border-radius:4px;padding:4px 8px;font-size:11px;color:var(--text);font-family:var(--mono);pointer-events:none;white-space:nowrap;line-height:1.4"></div>
 <div id="iconErrorBar" style="display:none;position:absolute;bottom:28px;left:0;right:0;background:#a83030;color:#fff;padding:4px 12px;font-size:11px;z-index:999;align-items:center;gap:8px">
-  <span>⚠ Could not load unit icons from online source. Set a local icon folder in Scenario Builder → Settings, or check your internet connection.</span>
-  <button class="small" style="margin-left:auto;background:transparent;border:1px solid #fff;color:#fff" onclick="this.parentElement.style.display='none'">Dismiss</button>
+  <span>⚠ Could not load icons from online source. <span id="iconErrorDetails" style="opacity:0.85"></span></span>
+  <button class="small" style="background:transparent;border:1px solid #fff;color:#fff" onclick="retryIconFetches()" title="Clear failed-icon cache and try fetching again">Retry</button>
+  <button class="small" style="background:transparent;border:1px solid #fff;color:#fff" onclick="this.parentElement.style.display='none'">Dismiss</button>
 </div>
 <div id="bottombar">
   <span class="mode-display" id="modeDisplay">Pan mode</span>
@@ -960,12 +966,15 @@ const state = {
     iconScaleMin: 0.1,
     iconScaleMax: 0.5,
     localIconFolder: '',
-    // Keyed by the suspected (target) side. BLUFOR players placing suspected OPFOR markers
-    // use suspectedIcons.opfor; OPFOR players placing suspected BLUFOR markers use suspectedIcons.bluefor.
-    suspectedIcons: {
-      bluefor: 'SUSPECTED_BLUFOR_Question_mark_Unspecified.svg',
-      opfor:   'SUSPECTED_OPFOR_Question_mark_Unspecified.svg'
-    }
+    // Per-side optional custom SVG override for player-placed suspected-enemy markers.
+    // When empty, the default APP-6 icon is fetched from the local icon folder (if set)
+    // then from GitHub: SUSPECTED_{SIDE}_Question_mark_Unspecified.svg
+    suspectedIcons: { bluefor: '', opfor: '' },
+    // Modifier library. Each entry is either a boolean modifier (present / absent) or a
+    // counter (sequential levels a user can advance/regress through). See the Modifiers
+    // tab in the scenario builder for editing; entries here are the Battlegroup Clash
+    // defaults that ship with a fresh scenario.
+    modifiers: defaultModifierLibrary()
   },
   viewRole: 'umpire',
   turnNumber: 0,
@@ -975,6 +984,7 @@ const state = {
   showOrderTooltips: true,
   orderLabelMode: 'full',
   gameMode: false,
+  showUnitAnchors: false,
   drawingStyle: { dashArray: null, weight: null },
   detectionCounters: { bluefor: 0, opfor: 0 }, // for auto-assigning numeric IDs
   suspectedIconSVG: null, // user-definable yellow-icon SVG override
@@ -1395,7 +1405,8 @@ const LG = {
   text: L.layerGroup().addTo(map),
   symbols: L.layerGroup().addTo(map),
   tempRing: L.layerGroup().addTo(map),
-  tempDraw: L.layerGroup().addTo(map)
+  tempDraw: L.layerGroup().addTo(map),
+  anchors: L.layerGroup().addTo(map)
 };
 
 // ═══════════════════════════════════════════════════════════════════
@@ -1430,8 +1441,10 @@ function applyRole(role) {
   if (state.gameMode) closePanel();
   updateScenarioAccess();
   renderAll();
-  // Refresh Layers panel so role-restricted layers/drawings are immediately hidden
+  // Refresh side panels so role-restricted content is re-scoped immediately. This covers
+  // Layers, Units, and also Unit/Marker edit panels (where sections differ by role).
   refreshLayersPanelIfOpen();
+  refreshOpenPanel();
 }
 
 function updateScenarioAccess() {
@@ -1586,7 +1599,9 @@ function createUnitFromTemplate(template, latlng, side, overrides) {
     notesHistory: {},
     previousLatlng: null,
     detection: { bluefor: side === 'bluefor' ? 'self' : 'unknown', opfor: side === 'opfor' ? 'self' : 'unknown' },
-    detectionId: { bluefor: null, opfor: null }
+    detectionId: { bluefor: null, opfor: null },
+    // Modifier instances (from state.scenario.modifiers library): {modifierId, level, addedBy, addedTurn, notes}
+    modifiers: []
   };
   state.units.push(unit);
   renderUnit(unit);
@@ -1643,6 +1658,129 @@ const ICON_ECHELON_MAP = {
   'battalion': 'Company', 'regiment': 'Company', 'brigade': 'Company'
 };
 const ICON_SIDE_MAP = { 'bluefor': 'BLUFOR', 'opfor': 'OPFOR' };
+// Returns the canonical uppercase side abbreviation (BLUFOR / OPFOR) used in filenames
+// and labels. Guards against the common ".toUpperCase()" bug producing "BLUEFOR".
+function sideAbbr(side) { return ICON_SIDE_MAP[side] || (side ? String(side).toUpperCase() : ''); }
+
+// Default modifier library seeded into fresh scenarios. These are the Battlegroup Clash
+// modifiers — counters (multi-level) and booleans (on/off). Scenarios can edit, add to,
+// or delete from this list in Scenario Builder → Modifiers.
+//
+// Permission vocabulary:
+//   'umpire'   — only umpire
+//   'owner'    — umpire + the unit's own side
+//   'opponent' — umpire + the opposing side
+//   'any'      — umpire + both sides
+//
+// Counter modifiers have a `levels` array (2+ entries); the unit stores a `level` index.
+// Boolean modifiers omit `levels`.
+function defaultModifierLibrary() {
+  return [
+    {
+      id: 'mod_atgm', name: 'ATGM shots', abbr: 'ATGM',
+      description: 'Anti-tank missile shots (Javelin or Stabber) remaining.',
+      type: 'counter',
+      levels: [
+        { abbr: '2', label: 'Full: 2 ATGM shots remaining', color: '#2a8f3a' },
+        { abbr: '1', label: 'Depleted: 1 ATGM shot remaining', color: '#e8a23a' }
+      ],
+      startLevel: 0, removeAtLevel: null, stackPriority: 1,
+      visibleToOpponent: false,
+      addPermission: 'umpire', removePermission: 'umpire', stepPermission: 'owner'
+    },
+    {
+      id: 'mod_at', name: 'AT shots', abbr: 'AT',
+      description: 'Anti-tank weapon shots (NLAW or RPG) remaining.',
+      type: 'counter',
+      levels: [
+        { abbr: '2', label: 'Full: 2 AT shots remaining', color: '#2a8f3a' },
+        { abbr: '1', label: 'Depleted: 1 AT shot remaining', color: '#e8a23a' }
+      ],
+      startLevel: 0, removeAtLevel: null, stackPriority: 2,
+      visibleToOpponent: false,
+      addPermission: 'umpire', removePermission: 'umpire', stepPermission: 'owner'
+    },
+    {
+      id: 'mod_dugin', name: 'Digging in / Shell scrapes', abbr: 'DIG',
+      description: 'Prepared positions giving direct/indirect fire DRM.',
+      type: 'counter',
+      levels: [
+        { abbr: 'DIG', label: 'Digging in: −1 DRM against Direct and Indirect Fire', color: '#8a6d3b' },
+        { abbr: 'SCR', label: 'Shell scrapes: −2 DRM against Direct and Indirect Fire', color: '#6b4f27' }
+      ],
+      startLevel: 0, removeAtLevel: null, stackPriority: 3,
+      visibleToOpponent: true,
+      addPermission: 'owner', removePermission: 'owner', stepPermission: 'owner'
+    },
+    {
+      id: 'mod_reorg', name: 'REORG', abbr: 'REORG',
+      description: 'Unit reorganising.',
+      type: 'boolean', color: '#4a6fa5', stackPriority: 5,
+      visibleToOpponent: false,
+      addPermission: 'owner', removePermission: 'owner'
+    },
+    {
+      id: 'mod_assault_reorg', name: 'Assault REORG', abbr: 'A-RE',
+      description: 'Unit reorganising after assault.',
+      type: 'boolean', color: '#3e5a8a', stackPriority: 6,
+      visibleToOpponent: false,
+      addPermission: 'owner', removePermission: 'owner'
+    },
+    {
+      id: 'mod_overwatch', name: 'Overwatch / OW Activated', abbr: 'OW',
+      description: 'Overwatch posture and whether it has already been triggered this turn.',
+      type: 'counter',
+      levels: [
+        { abbr: 'OW', label: 'Overwatch: able to Reactive Fire', color: '#2a6bc4' },
+        { abbr: 'OW!', label: 'OW Activated: FE cannot be activated again this turn', color: '#a33' }
+      ],
+      startLevel: 0, removeAtLevel: null, stackPriority: 4,
+      visibleToOpponent: true,
+      addPermission: 'owner', removePermission: 'owner', stepPermission: 'any'
+    },
+    {
+      id: 'mod_suppressed', name: 'Suppressed / Disrupted', abbr: 'SUPP',
+      description: 'Suppression state from enemy fire, reducing TQ.',
+      type: 'counter',
+      levels: [
+        { abbr: 'SUPP', label: 'Suppressed: −1 to FE\u2019s TQ', color: '#d94a4a' },
+        { abbr: 'DIS',  label: 'Disrupted: −2 to FE\u2019s TQ', color: '#a33030' }
+      ],
+      startLevel: 0, removeAtLevel: null, stackPriority: 7,
+      visibleToOpponent: true,
+      addPermission: 'opponent', removePermission: 'umpire', stepPermission: 'opponent'
+    }
+  ];
+}
+
+// Look up a modifier definition from the scenario library. Returns null if not found.
+function findModifierDef(modifierId) {
+  if (!state.scenario.modifiers) return null;
+  return state.scenario.modifiers.find(m => m.id === modifierId) || null;
+}
+
+// Returns true if the current viewRole has the given permission level for a given unit.
+// Permission vocabulary matches defaultModifierLibrary(): 'umpire' / 'owner' / 'opponent' / 'any'.
+function roleHasPermission(permission, unitSide) {
+  const role = state.viewRole;
+  if (role === 'umpire') return true;                        // umpire always
+  if (permission === 'any') return true;
+  if (permission === 'umpire') return false;                 // only umpire (handled above)
+  if (permission === 'owner') return role === unitSide;
+  if (permission === 'opponent') return role !== unitSide && (role === 'bluefor' || role === 'opfor');
+  return false;
+}
+
+// Can the current viewer see this modifier on a unit they're not aligned with?
+// The unit's own side + umpire always see their modifiers; the opponent sees only those
+// flagged visibleToOpponent AND only when the unit is at least 'detected' to them.
+function canViewerSeeModifier(unit, modDef) {
+  const role = state.viewRole;
+  if (role === 'umpire' || role === unit.side) return true;
+  if (!modDef.visibleToOpponent) return false;
+  const det = unit.detection && unit.detection[role];
+  return det === 'detected' || det === 'identified';
+}
 const ALL_UNIT_TYPES = [
   { id: 'infantry', name: 'Infantry' },
   { id: 'infantry_mech', name: 'Mechanised Infantry' },
@@ -1685,7 +1823,7 @@ async function fetchIcon(side, type, echelon) {
       const resp = await fetch(localFolder + sep + filename);
       if (resp.ok) {
         const svg = await resp.text();
-        if (svg.includes('<svg')) { iconCache[key] = svg; return svg; }
+        if (/<svg/i.test(svg)) { iconCache[key] = svg; return svg; }
       }
     } catch (e) { /* fall through to online */ }
   }
@@ -1695,7 +1833,7 @@ async function fetchIcon(side, type, echelon) {
     const resp = await fetch(ICON_BASE_URL + filename);
     if (!resp.ok) { iconCache[key] = null; trackIconError(filename); return null; }
     const svg = await resp.text();
-    if (!svg.includes('<svg')) { iconCache[key] = null; trackIconError(filename); return null; }
+    if (!/<svg/i.test(svg)) { iconCache[key] = null; trackIconError(filename); return null; }
     iconCache[key] = svg;
     return svg;
   } catch (e) {
@@ -1716,19 +1854,20 @@ async function fetchIconFile(filename) {
       const resp = await fetch(localFolder + sep + filename);
       if (resp.ok) {
         const svg = await resp.text();
-        if (svg.includes('<svg')) { iconCache[key] = svg; return svg; }
+        if (/<svg/i.test(svg)) { iconCache[key] = svg; return svg; }
       }
     } catch(e) {}
   }
   try {
-    const resp = await fetch(ICON_BASE_URL + filename);
+    const resp = await fetch(ICON_BASE_URL + filename, { cache: iconRetryNonce ? 'reload' : 'default' });
     if (!resp.ok) { iconCache[key] = null; trackIconError(filename); return null; }
     const svg = await resp.text();
-    if (!svg.includes('<svg')) { iconCache[key] = null; trackIconError(filename); return null; }
+    if (!/<svg/i.test(svg)) { iconCache[key] = null; trackIconError(filename); return null; }
     iconCache[key] = svg;
     return svg;
   } catch(e) { iconCache[key] = null; trackIconError(filename, e); return null; }
 }
+let iconRetryNonce = 0;
 function cachedIconFile(filename) {
   const key = '_raw_' + filename.replace(/\.svg$/i, '');
   return iconCache[key] || null;
@@ -1736,11 +1875,44 @@ function cachedIconFile(filename) {
 
 function trackIconError(filename, err) {
   iconLoadErrors++;
-  if (!iconLoadErrorShown && iconLoadErrors >= 2) {
-    iconLoadErrorShown = true;
+  if (!iconFailedNames) iconFailedNames = new Set();
+  iconFailedNames.add(filename);
+  try {
+    console.warn('[bg_clasher] icon fetch failed:', filename, 'URL:', ICON_BASE_URL + filename, err || '');
+  } catch(e) {}
+  if (iconLoadErrors >= 2) {
     const bar = document.getElementById('iconErrorBar');
-    if (bar) bar.style.display = 'flex';
+    if (bar) {
+      bar.style.display = 'flex';
+      const detail = document.getElementById('iconErrorDetails');
+      if (detail) {
+        const names = Array.from(iconFailedNames).slice(0, 5);
+        const more = iconFailedNames.size > names.length ? ` (+${iconFailedNames.size - names.length} more)` : '';
+        detail.textContent = `Failed: ${names.join(', ')}${more}`;
+      }
+    }
+    iconLoadErrorShown = true;
   }
+}
+
+let iconFailedNames = null;
+
+// Clear failed-fetch cache entries and re-attempt. Useful after fixing a network issue
+// or uploading missing files.
+function retryIconFetches() {
+  let cleared = 0;
+  Object.keys(iconCache).forEach(k => {
+    if (iconCache[k] === null) { delete iconCache[k]; cleared++; }
+  });
+  iconLoadErrors = 0;
+  iconLoadErrorShown = false;
+  if (iconFailedNames) iconFailedNames.clear();
+  iconRetryNonce++; // forces fetch() to bypass HTTP cache on next attempt
+  const bar = document.getElementById('iconErrorBar');
+  if (bar) bar.style.display = 'none';
+  renderAllUnits();
+  renderAllMarkers();
+  console.log(`[bg_clasher] cleared ${cleared} failed icon cache entries; re-rendering with fresh fetch.`);
 }
 
 // Prefetch icon for a unit and re-render when ready
@@ -1757,15 +1929,11 @@ function getCachedIcon(unit) {
 }
 
 function generateUnitSVG(unit, displayLabel, forceColor) {
-  // Use GitHub icon if available and no unit-level customSVG override
+  // Use GitHub icon if available and no unit-level customSVG override.
+  // The designation label is rendered as an HTML span alongside the icon in renderUnit(),
+  // not baked into the SVG — so it scales independently and stays readable at small zooms.
   const ghIcon = getCachedIcon(unit);
   if (ghIcon && !unit.customSVG) {
-    const label = displayLabel != null ? displayLabel : unit.designation;
-    if (label) {
-      // Inject designation label before closing </svg>
-      const labelSvg = `<text x="2" y="95%" text-anchor="start" font-size="9" font-family="Arial" fill="#000" font-weight="bold" stroke="#fff" stroke-width="2" paint-order="stroke">${esc(label)}</text>`;
-      return ghIcon.replace('</svg>', labelSvg + '</svg>');
-    }
     return ghIcon;
   }
   const sideColor = forceColor || (unit.side === 'bluefor' ? '#4a90d9' : unit.side === 'opfor' ? '#d94a4a' : '#888');
@@ -1846,13 +2014,12 @@ function generateUnitSVG(unit, displayLabel, forceColor) {
     });
   }
 
-  // Designation: bottom-left, compact
-  const labelSvg = label ? `<text x="1" y="44" text-anchor="start" font-size="9" font-family="Arial" fill="#000" font-weight="bold" stroke="#fff" stroke-width="2" paint-order="stroke">${esc(label)}</text>` : '';
+  // Designation is rendered as an HTML span outside the SVG (see renderUnit) so it scales
+  // independently of the unit frame and can be positioned beside, not inside, the icon.
 
   return `<svg xmlns="http://www.w3.org/2000/svg" width="54" height="46" viewBox="0 0 54 46">
     <g>${frame}${symbol}${echelon}</g>
     ${statusGlyphs}
-    ${labelSvg}
   </svg>`;
 }
 
@@ -1898,6 +2065,11 @@ function renderUnit(unit) {
   // clear prior layer for this unit
   LG.units.eachLayer(l => { if (l._unitId === unit.id) LG.units.removeLayer(l); });
   LG.unitRings.eachLayer(l => { if (l._unitId === unit.id) LG.unitRings.removeLayer(l); });
+  LG.anchors.eachLayer(l => { if (l._anchorFor === unit.id) LG.anchors.removeLayer(l); });
+
+  // Transported units (passengers inside a carrier) don't render on the map — they're
+  // tracked only in state.units and managed via the Units panel / carrier's tooltip.
+  if (unit.transportedBy) return;
 
   const role = state.viewRole;
 
@@ -1924,18 +2096,29 @@ function renderUnit(unit) {
     marker.on('dragend', e => {
       const p = e.target.getLatLng();
       unit.latlng = [p.lat, p.lng];
-      logAction(`Suspected ${unit.side.toUpperCase()} moved`);
+      logAction(`Suspected ${sideAbbr(unit.side)} moved`);
       showMoveUndo(unit);
     });
     marker.on('click', () => {
+      if (currentTool === 'measure') { addMeasurePoint(L.latLng(unit.latlng[0], unit.latlng[1])); return; }
+      if (currentTool === 'angle')   { addAnglePoint(L.latLng(unit.latlng[0], unit.latlng[1]));   return; }
       if (canEdit) openSuspectedEditPanel(unit);
     });
     LG.units.addLayer(marker);
+    // Remove any existing anchor for this id, then optionally draw a fresh one.
+    LG.anchors.eachLayer(l => { if (l._anchorFor === unit.id) LG.anchors.removeLayer(l); });
+    if (state.showUnitAnchors) renderAnchorFor(unit.id, unit.latlng);
     return;
   }
 
-  // Visibility logic based on detection state
-  let displayMode = 'full'; // 'full' | 'detected' | 'suspected' | 'hidden'
+  // Visibility logic based on detection state.
+  // Naming: 'unknown' = completely hidden to enemy.
+  //         'detected' = enemy sees a question-mark icon with no identifying info (the
+  //                      renamed former 'suspected' state — unrelated to isSuspectedMarker,
+  //                      which is a *player-placed* suspected-contact marker).
+  //         'identified' = enemy sees the unit's silhouette with a numeric ID instead of
+  //                        designation (formerly 'detected').
+  let displayMode = 'full'; // 'full' | 'identified' | 'detected' | 'hidden'
   let displayLabel = unit.designation;
 
   if (role === 'umpire' || unit.side === role) {
@@ -1943,11 +2126,14 @@ function renderUnit(unit) {
   } else {
     // Opposing side view — consult detection state
     const det = unit.detection && unit.detection[role];
-    if (det === 'detected') {
-      displayMode = 'detected';
+    if (det === 'identified') {
+      displayMode = 'identified';
       displayLabel = unit.detectionId && unit.detectionId[role] != null ? String(unit.detectionId[role]) : '?';
-    } else if (det === 'suspected') {
-      displayMode = 'suspected';
+    } else if (det === 'detected') {
+      displayMode = 'detected';
+      // Enemy-facing question-mark icon carries NO designation — otherwise the unit's
+      // real label would leak. Set explicitly so the external HTML label is empty.
+      displayLabel = '';
     } else {
       displayMode = 'hidden';
     }
@@ -1960,7 +2146,8 @@ function renderUnit(unit) {
   if (tacLayer && !tacLayer.visible) return;
 
   let svg, iconSize, iconAnchor;
-  if (displayMode === 'suspected') {
+  if (displayMode === 'detected') {
+    // Enemy-facing question-mark icon (the renamed former 'suspected' state)
     svg = generateSuspectedSVG(unit);
     const wM = svg.match(/width="(\d+)"/);
     const hM = svg.match(/height="(\d+)"/);
@@ -1968,9 +2155,10 @@ function renderUnit(unit) {
     const sh = hM ? parseInt(hM[1]) : 38;
     const sc = state.scenario.unitIconScale || 0.3;
     iconSize = [Math.round(sw * sc), Math.round(sh * sc)];
+    // Anchor at the SVG's visual centre so custom SVGs of any layout work correctly.
     iconAnchor = [Math.round(sw * sc / 2), Math.round(sh * sc / 2)];
   } else {
-    // full or detected — both use unit SVG but with different label
+    // full or identified — both use unit SVG but with different label
     svg = unit.customSVG || generateUnitSVG(unit, displayLabel);
     // Parse icon dimensions from SVG (for GitHub icons that may differ from 54×46)
     const wMatch = svg.match(/width="(\d+)"/);
@@ -1979,13 +2167,63 @@ function renderUnit(unit) {
     const h = hMatch ? parseInt(hMatch[1]) : 46;
     const sc = state.scenario.unitIconScale || 0.3;
     iconSize = [Math.round(w * sc), Math.round(h * sc)];
-    iconAnchor = [Math.round(w * sc / 2.8), Math.round(h * sc / 2)];
+    // Anchor at the SVG's visual centre. This is the most general choice: it works
+    // identically for the auto-generated APP-6 frames, fetched GitHub icons, and any
+    // user-supplied custom SVGs. Range rings are drawn at unit.latlng, so the icon
+    // centre sits on the ring centre. Use the optional anchor-crosshair overlay
+    // (toggle in the top bar) to verify visually.
+    iconAnchor = [Math.round(w * sc / 2), Math.round(h * sc / 2)];
   }
   const iconUrl = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
 
-  const icon = L.icon({ iconUrl, iconSize, iconAnchor, tooltipAnchor: [Math.round(iconSize[0]*0.6), 0] });
+  // Compose an HTML divIcon: the SVG as an <img>, with the designation and the formation
+  // abbreviation as absolutely-positioned text spans. The anchor points differ by frame
+  // shape to follow APP-6:
+  //   BLUFOR (rectangle) & neutrals: labels hang off the bottom-left and bottom-right of
+  //     the icon box (the rectangle's corners coincide with the box corners).
+  //   OPFOR (diamond): labels anchor outside the diamond's *lateral* corners at x=3 and
+  //     x=35 in the 54×46 viewBox, with the text sitting in the lower-outer wedges above
+  //     the bottom tip (y=29). In your APP-6 reference, designation ends ~1–2 units left
+  //     of the left corner and formation starts ~1–2 units right of the right corner,
+  //     at a y close to the bottom tip. Numbers here are scaled from that reference.
+  const iconW = iconSize[0], iconH = iconSize[1];
+  const sc = state.scenario.unitIconScale || 0.3;
+  const fontSz = Math.max(10, Math.round(32 * sc));
+  const desigText = displayLabel != null ? String(displayLabel) : (unit.designation || '');
+  const formationAbbr = (displayMode === 'full') ? getUnitFormationAbbr(unit) : '';
+  const shadow = 'text-shadow:-1px -1px 0 #fff,1px -1px 0 #fff,-1px 1px 0 #fff,1px 1px 0 #fff,0 0 2px #fff';
+  const labelBase = `position:absolute;font:bold ${fontSz}px Arial,sans-serif;color:#000;white-space:nowrap;line-height:1;${shadow};pointer-events:none`;
+
+  // Label placement is the same for all sides: designation hangs off the bottom-left
+  // corner of the icon box, formation abbreviation off the bottom-right. This works
+  // reliably with GitHub-fetched icons and user-supplied custom SVGs regardless of
+  // their internal geometry — we don't need to know where the frame "corners" are.
+  const desigStyle = `right:100%;padding-right:3px;bottom:0`;
+  const formStyle  = `left:100%;padding-left:3px;bottom:0`;
+
+  // Modifier badges stack down the right edge starting from the top. Formation abbr
+  // sits at bottom-right so they don't collide; if there are many modifiers they'll
+  // simply grow downward toward (but not through) the formation label.
+  const modifierBadgesHTML = renderUnitModifierBadges(unit, iconW, iconH, fontSz);
+
+  const htmlBody = `<div style="position:relative;width:${iconW}px;height:${iconH}px;line-height:0">
+    <img src="${iconUrl}" style="width:${iconW}px;height:${iconH}px;display:block;user-select:none" draggable="false" alt="">
+    ${desigText ? `<span style="${labelBase};${desigStyle}">${esc(desigText)}</span>` : ''}
+    ${formationAbbr ? `<span style="${labelBase};${formStyle}">${esc(formationAbbr)}</span>` : ''}
+    ${modifierBadgesHTML}
+  </div>`;
+  const icon = L.divIcon({
+    className: '',
+    html: htmlBody,
+    iconSize: [iconW, iconH],
+    iconAnchor,
+    tooltipAnchor: [Math.round(iconW * 0.6), 0]
+  });
   const draggable = (role === 'umpire' || unit.side === role);
-  const marker = L.marker(unit.latlng, { icon, draggable, zIndexOffset: 500 });
+  // Units flagged as "stack on top" (e.g. freshly dismounted passengers) render above
+  // other units at the same location. 500 is the normal offset; 1000 keeps them above.
+  const zOff = unit.stackTop ? 1000 : 500;
+  const marker = L.marker(unit.latlng, { icon, draggable, zIndexOffset: zOff });
   marker._unitId = unit.id;
 
   marker.bindTooltip(unitTooltipHTML(unit, displayMode, displayLabel), {
@@ -1999,16 +2237,21 @@ function renderUnit(unit) {
   marker.on('dragend', e => {
     const p = e.target.getLatLng();
     unit.latlng = [p.lat, p.lng];
+    // Any passengers riding this carrier move with it, so a later dismount drops them
+    // at the carrier's current position rather than wherever it was originally boarded.
+    state.units.filter(u => u.transportedBy === unit.id).forEach(pax => { pax.latlng = [p.lat, p.lng]; });
     logAction(`Unit ${unit.name}${unit.designation?' '+unit.designation:''} moved`);
     showMoveUndo(unit);
     renderUnitRangeRings(unit);
   });
 
   marker.on('click', () => {
+    // Measuring tools take priority: clicking a unit should add its exact position
+    // as a waypoint rather than open the unit panel.
+    if (currentTool === 'measure') { addMeasurePoint(L.latLng(unit.latlng[0], unit.latlng[1])); return; }
+    if (currentTool === 'angle')   { addAnglePoint(L.latLng(unit.latlng[0], unit.latlng[1]));   return; }
     if (currentTool === 'edit' && (role === 'umpire' || unit.side === role)) {
-      confirmModal(`Withdraw unit "${unit.name}"? (Returns to OOB if originated from it)`).then(ok => {
-        if (ok) withdrawUnit(unit.id);
-      });
+      confirmWithdrawUnit(unit.id);
       return;
     }
     if (currentTool === 'move' && (role === 'umpire' || unit.side === role)) {
@@ -2021,29 +2264,40 @@ function renderUnit(unit) {
 
   LG.units.addLayer(marker);
   if (displayMode === 'full') renderUnitRangeRings(unit);
+  // Anchor crosshair (if enabled)
+  LG.anchors.eachLayer(l => { if (l._anchorFor === unit.id) LG.anchors.removeLayer(l); });
+  if (state.showUnitAnchors) renderAnchorFor(unit.id, unit.latlng);
 }
 
 // ── Suspected-marker helpers ──
 // Resolve the SVG for a placed suspected-enemy marker. Filename is configurable per side
 // via state.scenario.suspectedIcons[unit.side]. Falls back to a yellow diamond while loading
 // or if fetch fails.
+// Embedded default APP-6 style SUSPECTED icons per side. Used when neither a custom SVG
+// override nor a GitHub/local fetch succeeds. Dimensions (316×216) match the APP-6 icons
+// used elsewhere so they scale correctly with unitIconScale.
+const EMBEDDED_SUSPECTED_ICONS = {
+  bluefor: `<svg xmlns="http://www.w3.org/2000/svg" version="1.2" baseProfile="tiny" width="316" height="216" viewBox="21 46 158 108"><path d="M25,50 l150,0 0,100 -150,0 z" stroke-width="4" stroke="black" fill="rgb(128,224,255)" fill-opacity="1"></path><path d="M25,50 l150,0 0,100 -150,0 z" stroke-width="5" stroke-dasharray="4,4" stroke="rgb(239,239,239)" fill="none"></path><text x="100" y="103" text-anchor="middle" font-size="60" font-family="Arial" font-weight="bold" dominant-baseline="middle" fill="black">?</text></svg>`,
+  opfor: `<svg xmlns="http://www.w3.org/2000/svg" version="1.2" baseProfile="tiny" width="316" height="216" viewBox="21 46 158 108"><path d="M100,50 L175,100 L100,150 L25,100 Z" stroke-width="4" stroke="black" fill="rgb(255,140,140)" fill-opacity="1"></path><path d="M100,50 L175,100 L100,150 L25,100 Z" stroke-width="5" stroke-dasharray="4,4" stroke="rgb(239,239,239)" fill="none"></path><text x="100" y="103" text-anchor="middle" font-size="55" font-family="Arial" font-weight="bold" dominant-baseline="middle" fill="black">?</text></svg>`
+};
+
 function suspectedMarkerSVG(unit) {
+  // 1. Scenario custom SVG override wins if it's actually SVG content.
   const cfg = (state.scenario && state.scenario.suspectedIcons) || {};
-  const defaultName = `SUSPECTED_${(unit.side || 'opfor').toUpperCase()}_Question_mark_Unspecified.svg`;
-  const filename = cfg[unit.side] || defaultName;
-  const cached = cachedIconFile(filename);
+  const override = (cfg[unit.side] || '').trim();
+  if (override && override.includes('<svg')) return override;
+  // 2. Try cached fetch of the default filename.
+  const defaultName = `SUSPECTED_${sideAbbr(unit.side || 'opfor')}_Question_mark_Unspecified.svg`;
+  const cached = cachedIconFile(defaultName);
   if (cached) return cached;
-  // Trigger fetch and re-render when ready
-  fetchIconFile(filename).then(svg => { if (svg) renderUnit(unit); });
-  // Fallback diamond while loading
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="38" height="38" viewBox="0 0 38 38">
-    <path d="M19,4 L34,19 L19,34 L4,19 Z" fill="#f5c518" stroke="#000" stroke-width="2" stroke-dasharray="3,2"/>
-    <text x="19" y="25" text-anchor="middle" font-size="18" font-family="Arial" fill="#000" font-weight="bold">?</text>
-  </svg>`;
+  // 3. Kick off a one-time fetch attempt; re-render if it arrives.
+  fetchIconFile(defaultName).then(svg => { if (svg) renderUnit(unit); });
+  // 4. Fall back to the embedded APP-6 style default — always available, no network needed.
+  return EMBEDDED_SUSPECTED_ICONS[unit.side] || EMBEDDED_SUSPECTED_ICONS.opfor;
 }
 
 function suspectedMarkerTooltip(unit) {
-  const lines = [`<b>Suspected ${unit.side.toUpperCase()}</b>`];
+  const lines = [`<b>Suspected ${sideAbbr(unit.side)}</b>`];
   if (unit.notes) lines.push(esc(unit.notes));
   const t = (unit.addedAtTime || '').slice(0,16).replace('T',' ');
   lines.push(`<span style="color:#aaa">Added: ${esc(t)} \u00b7 Turn ${unit.addedAtTurn ?? '?'}${unit.placedBy?` \u00b7 by ${esc(unit.placedBy.toUpperCase())}`:''}</span>`);
@@ -2063,7 +2317,7 @@ function openSuspectedEditPanel(unit) {
          </select></div>`
     : '';
   showModal(`
-    <h3>Suspected ${unit.side.toUpperCase()}</h3>
+    <h3>Suspected ${sideAbbr(unit.side)}</h3>
     ${sideSelect}
     <div class="field-group"><label>Notes</label>
       <textarea id="se_notes" style="min-height:70px" autofocus>${esc(unit.notes || '')}</textarea></div>
@@ -2090,11 +2344,11 @@ function saveSuspectedEdit(id) {
 function deleteSuspectedUnit(id) {
   const u = getUnit(id);
   if (!u) return;
-  confirmModal(`Delete this suspected ${u.side.toUpperCase()} marker?`).then(ok => {
+  confirmModal(`Delete this suspected ${sideAbbr(u.side)} marker?`).then(ok => {
     if (!ok) return;
     state.units = state.units.filter(x => x.id !== id);
     LG.units.eachLayer(l => { if (l._unitId === id) LG.units.removeLayer(l); });
-    logCommitted(`Suspected ${u.side.toUpperCase()} marker removed`);
+    logCommitted(`Suspected ${sideAbbr(u.side)} marker removed`);
   });
 }
 
@@ -2109,6 +2363,9 @@ function renderUnitRangeRings(unit) {
     });
     circle._unitId = unit.id;
     LG.unitRings.addLayer(circle);
+    // Per-ring label toggle. Default true so older scenarios and templates still show
+    // labels unless the ring explicitly sets showLabel to false.
+    if (r.showLabel === false) return;
     const lat = unit.latlng[0] + (r.value / 111320);
     const label = L.marker([lat, unit.latlng[1]], {
       icon: L.divIcon({
@@ -2124,9 +2381,9 @@ function renderUnitRangeRings(unit) {
 }
 
 function unitTooltipHTML(unit, mode, label) {
-  if (mode === 'suspected') return `<b>Suspected enemy contact</b>`;
+  if (mode === 'detected') return `<b>Detected enemy contact</b>`;
   const fv = unit.fieldVisibility || {};
-  const isOpp = mode === 'detected';
+  const isOpp = mode === 'identified';
   const vis = (field) => isOpp ? fv[field]?.showOpponent : (fv[field]?.showTooltip !== false);
   const statVis = (s) => isOpp ? s.showOpponent : s.showTooltip;
   if (isOpp) {
@@ -2163,18 +2420,89 @@ function unitTooltipHTML(unit, mode, label) {
 function withdrawUnit(id) {
   const unit = getUnit(id);
   if (!unit) return;
-  // If unit is linked to OOB entry, mark entry as withdrawn (re-deployable)
+  // Passengers travelling inside this carrier (if any) are withdrawn too — we've already
+  // confirmed with the user at the call site, so just do it here for data-integrity.
+  const passengers = state.units.filter(u => u.transportedBy === id);
+  passengers.forEach(p => { withdrawUnitCore(p); });
+  withdrawUnitCore(unit);
+  renderMovementOrders();
+  refreshUnitsPanelIfOpen();
+  if (document.getElementById('panel').classList.contains('open') &&
+      document.getElementById('panelTitle').textContent !== 'Units') {
+    closePanel();
+  }
+}
+
+// Inner withdraw — strips one unit from the battlefield + OOB link. No confirms, no UI side
+// effects other than removing the map markers. Callers handle prompts, logging bulk, refresh.
+function withdrawUnitCore(unit) {
   if (unit.oobEntryId) {
     const entry = findOOBEntry(unit.oobEntryId);
     if (entry) { entry.deployed = false; entry.unitId = null; }
   }
-  state.units = state.units.filter(u => u.id !== id);
-  state.movementOrders = state.movementOrders.filter(o => o.unitId !== id);
-  LG.units.eachLayer(l => { if (l._unitId === id) LG.units.removeLayer(l); });
-  LG.unitRings.eachLayer(l => { if (l._unitId === id) LG.unitRings.removeLayer(l); });
-  renderMovementOrders();
+  state.units = state.units.filter(u => u.id !== unit.id);
+  state.movementOrders = state.movementOrders.filter(o => o.unitId !== unit.id);
+  LG.units.eachLayer(l => { if (l._unitId === unit.id) LG.units.removeLayer(l); });
+  LG.unitRings.eachLayer(l => { if (l._unitId === unit.id) LG.unitRings.removeLayer(l); });
+  LG.anchors.eachLayer(l => { if (l._anchorFor === unit.id) LG.anchors.removeLayer(l); });
   logCommitted(`Unit withdrawn: ${unit.name}${unit.designation ? ' ' + unit.designation : ''}`);
-  if (document.getElementById('panel').classList.contains('open')) closePanel();
+}
+
+// ── Transport (mount / dismount) ───────────────────────────────────
+// Move a unit inside another unit. The passenger is removed from the map but kept in
+// state.units; dismount restores it at the carrier's current position.
+function mountUnit(unitId, carrierId) {
+  const unit = getUnit(unitId);
+  const carrier = getUnit(carrierId);
+  if (!unit || !carrier) return;
+  if (unit.id === carrier.id) return;
+  if (carrier.transportedBy) { alert('Cannot mount into a unit that is itself being transported.'); return; }
+  unit.transportedBy = carrier.id;
+  unit.stackTop = false;
+  // Clear movement orders — passenger doesn't move independently while mounted
+  state.movementOrders = state.movementOrders.filter(o => o.unitId !== unit.id);
+  renderUnit(unit);     // hides the passenger on the map
+  renderUnit(carrier);  // refresh carrier's tooltip (passenger list)
+  renderMovementOrders();
+  logCommitted(`${unit.name} mounted ${carrier.name}`);
+  refreshUnitsPanelIfOpen();
+}
+
+function dismountUnit(unitId) {
+  const unit = getUnit(unitId);
+  if (!unit || !unit.transportedBy) return;
+  const carrier = getUnit(unit.transportedBy);
+  unit.transportedBy = null;
+  if (carrier) {
+    // Drop the passenger 250 m NW of the carrier (bearing 315°) so the two icons don't
+    // overlap at typical zooms. Lat: 1° ≈ 111320 m; Lng scales with cos(lat).
+    const dN = 250 * Math.cos(Math.PI / 4);  // 250 m * cos(45°) ≈ 177 m north
+    const dW = 250 * Math.sin(Math.PI / 4);  // 250 m * sin(45°) ≈ 177 m west
+    const lat = carrier.latlng[0];
+    const lng = carrier.latlng[1];
+    const dLat = dN / 111320;
+    const dLng = -dW / (111320 * Math.cos(lat * Math.PI / 180));
+    unit.latlng = [lat + dLat, lng + dLng];
+    // Stack above the carrier so the freshly dismounted unit is unambiguously visible,
+    // even if the user re-mounts/moves/zooms such that the two end up overlapping.
+    unit.stackTop = true;
+  }
+  renderUnit(unit);     // passenger reappears at offset
+  if (carrier) renderUnit(carrier);
+  logCommitted(`${unit.name} dismounted${carrier ? ' from ' + carrier.name : ''}`);
+  refreshUnitsPanelIfOpen();
+}
+
+// Confirm + withdraw (used by the Units panel button and the edit-tool unit-click flow).
+// Warns the user if the unit has passengers, since withdrawing cascades.
+function confirmWithdrawUnit(unitId) {
+  const unit = getUnit(unitId);
+  if (!unit) return;
+  const passengers = state.units.filter(u => u.transportedBy === unitId);
+  const msg = passengers.length > 0
+    ? `Withdraw "${unit.name}"? This will also withdraw ${passengers.length} passenger(s) to the pool: ${passengers.map(p => p.name).join(', ')}.`
+    : `Withdraw unit "${unit.name}"? (Returns to OOB if originated from it)`;
+  confirmModal(msg).then(ok => { if (ok) withdrawUnit(unitId); });
 }
 
 function deleteUnit(id) { withdrawUnit(id); } // backwards compat
@@ -2182,7 +2510,36 @@ function deleteUnit(id) { withdrawUnit(id); } // backwards compat
 function renderAllUnits() {
   LG.units.clearLayers();
   LG.unitRings.clearLayers();
+  LG.anchors.clearLayers();
   state.units.forEach(u => { renderUnit(u); prefetchUnitIcon(u); });
+}
+
+// Small magenta crosshair at a given latlng, useful for verifying that the unit/marker's
+// stored geographic position lines up with the visible centre of its icon and with any
+// range rings drawn around it. Called from renderUnit/renderMarker AFTER their own
+// visibility gates, so anchors only appear for entities actually visible in the current role.
+function renderAnchorFor(entityId, latlng) {
+  if (!state.showUnitAnchors) return;
+  const html = `<svg width="24" height="24" viewBox="0 0 24 24" style="overflow:visible">
+    <line x1="0" y1="12" x2="24" y2="12" stroke="#ff00ff" stroke-width="2" shape-rendering="crispEdges"/>
+    <line x1="12" y1="0" x2="12" y2="24" stroke="#ff00ff" stroke-width="2" shape-rendering="crispEdges"/>
+    <circle cx="12" cy="12" r="2" fill="#ff00ff"/>
+  </svg>`;
+  const icon = L.divIcon({ className: '', html, iconSize: [24, 24], iconAnchor: [12, 12] });
+  const marker = L.marker(latlng, { icon, interactive: false, keyboard: false, zIndexOffset: 9999 });
+  marker._anchorFor = entityId;
+  LG.anchors.addLayer(marker);
+}
+
+function toggleUnitAnchors() {
+  state.showUnitAnchors = !state.showUnitAnchors;
+  const btn = document.getElementById('toggleAnchorsBtn');
+  if (btn) btn.classList.toggle('active', state.showUnitAnchors);
+  // Re-render both units and markers so anchors respect per-role visibility (renderUnit
+  // and renderMarker each decide whether the entity is visible before adding an anchor).
+  LG.anchors.clearLayers();
+  renderAllUnits();
+  renderAllMarkers();
 }
 
 // Move undo
@@ -2355,6 +2712,8 @@ function renderMarker(m) {
   });
 
   marker.on('click', () => {
+    if (currentTool === 'measure') { addMeasurePoint(L.latLng(m.latlng[0], m.latlng[1])); return; }
+    if (currentTool === 'angle')   { addAnglePoint(L.latLng(m.latlng[0], m.latlng[1]));   return; }
     if (currentTool === 'edit') {
       confirmModal(`Delete marker "${m.name}"?`).then(ok => {
         if (!ok) return;
@@ -2369,6 +2728,9 @@ function renderMarker(m) {
 
   LG.markers.addLayer(marker);
   renderMarkerRings(m);
+  // Anchor crosshair (if enabled)
+  LG.anchors.eachLayer(l => { if (l._anchorFor === m.id) LG.anchors.removeLayer(l); });
+  if (state.showUnitAnchors) renderAnchorFor(m.id, m.latlng);
 }
 
 function renderMarkerRings(m) {
@@ -2414,6 +2776,173 @@ function refreshLayersPanelIfOpen() {
     renderLayersPanel(document.getElementById('panelBody'));
   }
 }
+
+function refreshUnitsPanelIfOpen() {
+  const title = document.getElementById('panelTitle');
+  if (title && title.textContent === 'Units') {
+    renderUnitsPanel(document.getElementById('panelBody'));
+  }
+}
+
+// ─── Tooltip reveal (Help button hover) ─────────────────────────────────
+// When the user hovers the Help button, we temporarily materialise every element's
+// `title` attribute as a visible floating label. This exists so a new user can see what
+// every top-bar button, toolbar icon, and checkbox does without having to hover each
+// one individually. Uses floating DIVs positioned by getBoundingClientRect so it doesn't
+// perturb layout, and skips elements whose bounding rect has zero area (hidden).
+let tooltipOverlayEls = [];
+function showAllTooltips() {
+  if (tooltipOverlayEls.length > 0) return;
+  const seen = new Set();
+  document.querySelectorAll('[title]').forEach(el => {
+    const text = el.getAttribute('title');
+    if (!text || !text.trim()) return;
+    // Skip hidden elements and those off-screen.
+    const r = el.getBoundingClientRect();
+    if (r.width === 0 || r.height === 0) return;
+    if (r.bottom < 0 || r.top > window.innerHeight || r.right < 0 || r.left > window.innerWidth) return;
+    // Cheap dedupe so that if something has identical layered titles we don't double-draw.
+    const key = r.top + ':' + r.left + ':' + text;
+    if (seen.has(key)) return;
+    seen.add(key);
+    const overlay = document.createElement('div');
+    overlay.className = 'tooltip-reveal';
+    overlay.textContent = text;
+    // Prefer showing below the element; if we'd fall off-screen, show above.
+    const tentativeTop = r.bottom + 4;
+    const useAbove = tentativeTop > window.innerHeight - 30;
+    overlay.style.cssText = [
+      'position:fixed',
+      'left:' + Math.max(4, Math.min(window.innerWidth - 250, r.left)) + 'px',
+      (useAbove ? 'bottom:' + (window.innerHeight - r.top + 4) : 'top:' + tentativeTop) + 'px',
+      'background:var(--accent)',
+      'color:#fff',
+      'padding:3px 7px',
+      'font:11px Arial,sans-serif',
+      'border-radius:3px',
+      'z-index:99999',
+      'pointer-events:none',
+      'max-width:260px',
+      'white-space:normal',
+      'box-shadow:0 2px 8px rgba(0,0,0,0.5)',
+      'line-height:1.3'
+    ].join(';');
+    document.body.appendChild(overlay);
+    tooltipOverlayEls.push(overlay);
+  });
+}
+function hideAllTooltips() {
+  tooltipOverlayEls.forEach(el => el.remove());
+  tooltipOverlayEls = [];
+}
+
+// ─── Help panel (Manual) ────────────────────────────────────────────────
+function renderHelpPanel(body) {
+  body.innerHTML = helpPanelHTML();
+}
+
+function helpPanelHTML() {
+  return `
+  <div style="padding:12px 14px;font-size:12px;line-height:1.5">
+    <p style="color:var(--text-dim);margin-top:0">
+      Battlegroup Clasher — a browser-based wargame map tool. Hover the <b>?</b>
+      button (top bar) to reveal every button's tooltip at once.
+    </p>
+
+    <h3 style="margin:14px 0 6px 0">Roles</h3>
+    <p>Top-left buttons switch the viewing role:</p>
+    <ul style="margin:4px 0 8px 18px;padding:0">
+      <li><b>UMPIRE</b> — sees everything. Sets unit detection level, configures the scenario, adjudicates.</li>
+      <li><b>BLUFOR</b> / <b>OPFOR</b> — only their own units, orders, and modifiers (unless flagged visible to opponent).</li>
+    </ul>
+    <p>In <b>Game Mode</b> (🎮 top bar), role switches prompt a handover screen and restrict the Scenario panel.</p>
+
+    <h3 style="margin:14px 0 6px 0">Building a scenario</h3>
+    <p>The <b>Scenario</b> button opens a tabbed builder:</p>
+    <ul style="margin:4px 0 8px 18px;padding:0">
+      <li><b>General</b> — name, start date/time, turn duration, turn limit, icon scale.</li>
+      <li><b>OOB BLUFOR / OOB OPFOR</b> — each side's order of battle. Build a tree of formations and units; units in the OOB start in the pool and can be deployed onto the map. Click <i>+ Formation</i> (enter name and a short abbreviation) or <i>+ Unit</i>.</li>
+      <li><b>Unit Tpl</b> — reusable templates with states, stats, range rings, movement rates, icon, default notes, and which modifiers are available.</li>
+      <li><b>Modifiers</b> — the library of overlays units can carry (ATGM shots, REORG, Suppressed, etc.). Boolean (on/off) or counter (sequential levels like 2→1 ATGM shots). Each defines its colour, permissions (who can add/remove/step), and whether the opponent can see it.</li>
+      <li><b>Markers / Symbols / Dice</b> — templates for game markers, map symbols, and dice rollers.</li>
+    </ul>
+
+    <h3 style="margin:14px 0 6px 0">Placing and moving units</h3>
+    <ul style="margin:4px 0 8px 18px;padding:0">
+      <li><b>▲ Place Unit</b> (or keyboard <b>U</b>) — opens a modal to deploy from OOB or place a new unit from a template. Also the tool to place a <i>suspected enemy</i> marker (yellow-outlined APP-6 icon).</li>
+      <li><b>Drag</b> a unit icon to move it. Carried passengers follow along.</li>
+      <li><b>Move tool</b> — click a unit, then click a sequence of points to plot an ordered movement path with ETA, speed, and segment modes.</li>
+      <li><b>Edit tool + unit click</b> — withdraw the unit (confirms, cascades to passengers).</li>
+    </ul>
+
+    <h3 style="margin:14px 0 6px 0">Unit details panel</h3>
+    <p>Click a unit (any tool except Move/Edit/Measure/Angle) to open its panel. Contents by section:</p>
+    <ul style="margin:4px 0 8px 18px;padding:0">
+      <li><b>Name / Designation / Side / Echelon</b> — with per-field visibility toggles (umpire only): <i>Tip</i> controls whether a field appears in the unit's map tooltip, <i>Opp</i> whether the opponent sees the field when the unit is identified.</li>
+      <li><b>Transport</b> — Mount the unit inside another friendly carrier, Dismount (lands 250 m NW of the carrier), or Withdraw to pool.</li>
+      <li><b>Modifiers</b> — chips show active modifiers. Counters have ◀/▶ to step, × to remove. Buttons only appear if the current role has permission.</li>
+      <li><b>Active State</b> — switches between mutually-exclusive postures (Mounted / Dismounted / Bypassing / whatever the template defines). Each state has its own stats, movement rates, range rings.</li>
+      <li><b>Orders</b> — pending movement orders for this unit, each with start/end time (either auto-computed from speed or manually fixed).</li>
+      <li><b>Stats / Movement / Range Rings</b> — for the active state. Umpire can edit; players see a summary. Range rings have <i>visible</i> and <i>label</i> toggles.</li>
+      <li><b>Detection</b> (umpire only) — how the opposing side sees this unit: <i>Unknown</i> / <i>Detected</i> (question mark, no info) / <i>Identified</i> (numeric ID + any opponent-visible fields).</li>
+      <li><b>Notes / Notes History</b> — per-turn notes snapshot at End Turn.</li>
+    </ul>
+
+    <h3 style="margin:14px 0 6px 0">Measurement</h3>
+    <ul style="margin:4px 0 8px 18px;padding:0">
+      <li><b>📏 Measure</b> — click points to measure distance and bearing; clicking on a unit or marker picks its exact position.</li>
+      <li><b>∠ Angle</b> — click three points (A → vertex → B) to measure an angle; also accepts unit/marker clicks as anchor points.</li>
+      <li><b>Escape</b> cancels in-progress measurements and clears existing ones.</li>
+    </ul>
+
+    <h3 style="margin:14px 0 6px 0">Drawing tools (polyline / polygon / circle / arrow / text / symbol)</h3>
+    <ul style="margin:4px 0 8px 18px;padding:0">
+      <li>Continuous drawing — after finishing one shape the tool stays active for the next.</li>
+      <li><b>Snap toolbar</b> — toggles angle and length snapping while drawing. Change the step by re-clicking the snap buttons.</li>
+      <li>Drawings live on <b>Layers</b>. Each layer has an owner side + visibility + edit rights. Use the layer chip (top bar) or the Layers panel to change active layer, hide a layer, or restrict edit rights.</li>
+    </ul>
+
+    <h3 style="margin:14px 0 6px 0">Map utilities</h3>
+    <ul style="margin:4px 0 8px 18px;padding:0">
+      <li><b>✛ Anchor crosshairs</b> — toggles a magenta cross at every visible unit/marker's stored lat/lng. Useful for verifying icon centering against range rings.</li>
+      <li><b>📋 Tooltip cycle</b> — switches the map-label density for orders and markers (full / short / off).</li>
+      <li><b>Layer chip</b> (top bar) — click to open the Layers panel; shows the currently active layer.</li>
+    </ul>
+
+    <h3 style="margin:14px 0 6px 0">Turns and the sync matrix</h3>
+    <ul style="margin:4px 0 8px 18px;padding:0">
+      <li><b>End Turn</b> — snapshots state and advances the turn. Can auto-save a scenario file with <code>_END_OF_TURN</code> suffix.</li>
+      <li><b>Sync Matrix</b> — per-side planning matrix: rows are formations (with abbreviations) and units; columns are turns. Free-text cells.</li>
+      <li><b>Turns</b> — jump back to a previous turn's snapshot. Viewing a past turn is read-only until you either revert or advance.</li>
+    </ul>
+
+    <h3 style="margin:14px 0 6px 0">Saving and loading</h3>
+    <ul style="margin:4px 0 8px 18px;padding:0">
+      <li><b>💾 Export Scenario</b> — downloads the full state as JSON.</li>
+      <li><b>📂 Import Scenario</b> — loads a JSON file. Migrations run automatically for older formats.</li>
+      <li><b>Templates / Icons</b> — the Scenario tab's Import/Export buttons move templates between scenarios without carrying game state.</li>
+    </ul>
+
+    <h3 style="margin:14px 0 6px 0">Keyboard shortcuts</h3>
+    <ul style="margin:4px 0 8px 18px;padding:0;font-family:var(--mono);font-size:11px">
+      <li><b>U</b> / <b>K</b> / <b>Y</b> — place unit / game marker / map symbol</li>
+      <li><b>M</b> — move tool</li>
+      <li><b>L</b> / <b>P</b> / <b>C</b> / <b>A</b> — polyline / polygon / circle / arrow</li>
+      <li><b>T</b> — text</li>
+      <li><b>D</b> / <b>V</b> — measure / angle</li>
+      <li><b>E</b> — edit</li>
+      <li><b>Esc</b> — cancel current action / close modal</li>
+      <li><b>Enter</b> — finish current drawing (where applicable)</li>
+    </ul>
+
+    <p style="margin-top:18px;color:var(--text-dim);font-size:11px">
+      If something looks wrong or a feature feels missing, use <b>💾 Export Scenario</b> to save a copy first, then describe the issue.
+    </p>
+  </div>
+  `;
+}
+
+function refreshLayersPanelIfOpen_SENTINEL() {} // placeholder anchor for diff readability
 
 function renderDrawings() {
   LG.drawings.clearLayers();
@@ -2921,14 +3450,14 @@ map.on('dblclick', e => {
 function addMeasurePoint(latlng) {
   measurePoints.push([latlng.lat, latlng.lng]);
 
-  L.circleMarker(latlng, { radius: 4, color: '#e94560', fillColor: '#e94560', fillOpacity: 1 }).addTo(LG.measure);
+  L.circleMarker(latlng, { radius: 4, color: '#e94560', fillColor: '#e94560', fillOpacity: 1, interactive: false }).addTo(LG.measure);
 
   if (measurePoints.length >= 2) {
     LG.measure.clearLayers();
     measurePoints.forEach(p => {
-      L.circleMarker(p, { radius: 4, color: '#e94560', fillColor: '#e94560', fillOpacity: 1 }).addTo(LG.measure);
+      L.circleMarker(p, { radius: 4, color: '#e94560', fillColor: '#e94560', fillOpacity: 1, interactive: false }).addTo(LG.measure);
     });
-    const poly = L.polyline(measurePoints, { color: '#e94560', weight: 2, dashArray: '6,4' });
+    const poly = L.polyline(measurePoints, { color: '#e94560', weight: 2, dashArray: '6,4', interactive: false });
     LG.measure.addLayer(poly);
 
     let total = 0;
@@ -2958,24 +3487,24 @@ function addAnglePoint(latlng) {
   // Clear in-progress preview the moment a point is committed
   if (anglePreviewLayer) { LG.measure.removeLayer(anglePreviewLayer); anglePreviewLayer = null; }
   anglePoints.push([latlng.lat, latlng.lng]);
-  L.circleMarker(latlng, { radius: 4, color: '#f5a623', fillColor: '#f5a623', fillOpacity: 1 }).addTo(LG.measure);
+  L.circleMarker(latlng, { radius: 4, color: '#f5a623', fillColor: '#f5a623', fillOpacity: 1, interactive: false }).addTo(LG.measure);
 
   if (anglePoints.length >= 2) {
     LG.measure.clearLayers();
     anglePoints.forEach(p => {
-      L.circleMarker(p, { radius: 4, color: '#f5a623', fillColor: '#f5a623', fillOpacity: 1 }).addTo(LG.measure);
+      L.circleMarker(p, { radius: 4, color: '#f5a623', fillColor: '#f5a623', fillOpacity: 1, interactive: false }).addTo(LG.measure);
     });
   }
 
   if (anglePoints.length === 2) {
-    L.polyline([anglePoints[0], anglePoints[1]], { color: '#f5a623', weight: 2, dashArray: '6,4' }).addTo(LG.measure);
+    L.polyline([anglePoints[0], anglePoints[1]], { color: '#f5a623', weight: 2, dashArray: '6,4', interactive: false }).addTo(LG.measure);
     const brg = bearing(anglePoints[0][0], anglePoints[0][1], anglePoints[1][0], anglePoints[1][1]);
     document.getElementById('measureReadout').textContent = `Bearing: ${brg.toFixed(1)}° — click third point for angle`;
   }
 
   if (anglePoints.length === 3) {
-    L.polyline([anglePoints[0], anglePoints[1]], { color: '#f5a623', weight: 2, dashArray: '6,4' }).addTo(LG.measure);
-    L.polyline([anglePoints[1], anglePoints[2]], { color: '#f5a623', weight: 2, dashArray: '6,4' }).addTo(LG.measure);
+    L.polyline([anglePoints[0], anglePoints[1]], { color: '#f5a623', weight: 2, dashArray: '6,4', interactive: false }).addTo(LG.measure);
+    L.polyline([anglePoints[1], anglePoints[2]], { color: '#f5a623', weight: 2, dashArray: '6,4', interactive: false }).addTo(LG.measure);
     // Compute angle at vertex (point 1)
     const v = anglePoints[1];
     const a = anglePoints[0];
@@ -3003,7 +3532,7 @@ function addAnglePoint(latlng) {
         v[1] + Math.sin(th) * arcR / (cosV * 111320)
       ]);
     }
-    L.polyline(arcPts, { color: '#f5a623', weight: 1.5, dashArray: '3,3' }).addTo(LG.measure);
+    L.polyline(arcPts, { color: '#f5a623', weight: 1.5, dashArray: '3,3', interactive: false }).addTo(LG.measure);
     // Label
     const midTh = startAngle + diff / 2;
     const labelPt = [
@@ -4276,7 +4805,7 @@ function showPlaceUnitModal(latlng) {
   const oobSection = hasPool
     ? `<div class="field-group" style="border:1px solid var(--panel-border);border-radius:4px;padding:8px;margin-bottom:10px">
          <label style="font-weight:600;color:var(--success)">Deploy unit from OOB</label>
-         <select id="pu_oob">${pool.map(p => `<option value="${p.entry.id}">[${p.side.toUpperCase()}] ${esc(p.pathLabel)}${esc(p.entry.name)}${p.entry.designation?' ('+esc(p.entry.designation)+')':''}</option>`).join('')}</select>
+         <select id="pu_oob">${pool.map(p => `<option value="${p.entry.id}">[${sideAbbr(p.side)}] ${esc(p.pathLabel)}${esc(p.entry.name)}${p.entry.designation?' ('+esc(p.entry.designation)+')':''}</option>`).join('')}</select>
          <div class="btn-row" style="margin-top:6px"><button onclick="confirmDeployFromOOB(${latlng.lat},${latlng.lng});this.closest('.modal-overlay').remove()">Deploy</button></div>
        </div>`
     : `<div style="font-size:11px;color:var(--text-dim);margin-bottom:10px">No undeployed units in accessible OOB.</div>`;
@@ -4308,7 +4837,7 @@ function confirmPlaceSuspected(lat, lng) {
   const unit = {
     id: uid(),
     isSuspectedMarker: true,
-    name: `Suspected ${side.toUpperCase()}`,
+    name: `Suspected ${sideAbbr(side)}`,
     designation: '',
     description: '',
     type: 'other',
@@ -4336,7 +4865,7 @@ function confirmPlaceSuspected(lat, lng) {
   };
   state.units.push(unit);
   renderUnit(unit);
-  logCommitted(`Suspected ${side.toUpperCase()} placed at (${lat.toFixed(4)}, ${lng.toFixed(4)}) by ${role.toUpperCase()}`);
+  logCommitted(`Suspected ${sideAbbr(side)} placed at (${lat.toFixed(4)}, ${lng.toFixed(4)}) by ${role.toUpperCase()}`);
 }
 
 function collectUndeployedUnits(list, side, pool, pathPrefix) {
@@ -4605,8 +5134,14 @@ function confirmModal(message, opts) {
 // ═══════════════════════════════════════════════════════════════════
 // PANELS
 // ═══════════════════════════════════════════════════════════════════
+// Current panel tracking so we can refresh it on role / state changes. Stored outside
+// the scenario (not persisted to saves); the ctx we keep is usually just the unit or
+// marker, which is looked up fresh via its id at refresh time so we don't hold stale data.
+let currentPanel = { type: null, ctx: null };
+
 function openPanel(type, ctx) {
   document.getElementById('panel').classList.add('open');
+  currentPanel = { type, ctx };
   const body = document.getElementById('panelBody');
   const title = document.getElementById('panelTitle');
 
@@ -4618,6 +5153,7 @@ function openPanel(type, ctx) {
     case 'turns': title.textContent = 'Turn History'; renderTurnsPanel(body); break;
     case 'dice': title.textContent = 'Dice Roller'; renderDicePanel(body); break;
     case 'log': title.textContent = 'Action Log'; renderLogPanel(body); break;
+    case 'help': title.textContent = 'Manual'; renderHelpPanel(body); break;
     case 'sync': {
       title.textContent = 'Sync Matrix';
       const requestedSide = ctx && ctx.side;
@@ -4630,7 +5166,31 @@ function openPanel(type, ctx) {
   }
 }
 
-function closePanel() { document.getElementById('panel').classList.remove('open'); }
+function closePanel() {
+  document.getElementById('panel').classList.remove('open');
+  currentPanel = { type: null, ctx: null };
+}
+
+// Re-render the currently-open panel with fresh state. Used after role changes so that
+// visibility-gated content (unit tooltip sections, detection controls, side scoping
+// etc.) updates without the user having to close and reopen the panel.
+function refreshOpenPanel() {
+  if (!currentPanel.type) return;
+  if (!document.getElementById('panel').classList.contains('open')) return;
+  // Look entities up fresh so we don't hold a stale reference if the user edited the unit
+  // or marker through a different path.
+  if (currentPanel.type === 'unit') {
+    const u = currentPanel.ctx && getUnit(currentPanel.ctx.id);
+    if (!u) { closePanel(); return; }
+    openPanel('unit', u);
+  } else if (currentPanel.type === 'marker') {
+    const m = currentPanel.ctx && state.markers.find(x => x.id === currentPanel.ctx.id);
+    if (!m) { closePanel(); return; }
+    openPanel('marker', m);
+  } else {
+    openPanel(currentPanel.type, currentPanel.ctx);
+  }
+}
 
 function openUnitPanel(unit) { openPanel('unit', unit); }
 function openMarkerPanel(marker) { openPanel('marker', marker); }
@@ -4643,6 +5203,7 @@ function renderScenarioPanel(body) {
       <button onclick="switchScenTab('oob_bluefor')">OOB BLUFOR</button>
       <button onclick="switchScenTab('oob_opfor')">OOB OPFOR</button>
       <button onclick="switchScenTab('units')">Unit Tpl</button>
+      <button onclick="switchScenTab('modifiers')">Modifiers</button>
       <button onclick="switchScenTab('markers')">Markers</button>
       <button onclick="switchScenTab('symbols')">Symbols</button>
       <button onclick="switchScenTab('dice')">Dice</button>
@@ -4654,7 +5215,7 @@ function renderScenarioPanel(body) {
 function switchScenTab(tab) {
   document.querySelectorAll('#scenTabs button').forEach(b => b.classList.remove('active'));
   const btns = document.querySelectorAll('#scenTabs button');
-  const tabs = ['general','oob_bluefor','oob_opfor','units','markers','symbols','dice'];
+  const tabs = ['general','oob_bluefor','oob_opfor','units','modifiers','markers','symbols','dice'];
   const idx = tabs.indexOf(tab);
   if (idx >= 0) btns[idx].classList.add('active');
   const c = document.getElementById('scenContent');
@@ -4662,6 +5223,7 @@ function switchScenTab(tab) {
   else if (tab === 'oob_bluefor') renderOOB(c, 'bluefor');
   else if (tab === 'oob_opfor') renderOOB(c, 'opfor');
   else if (tab === 'units') renderScenUnits(c);
+  else if (tab === 'modifiers') renderScenModifiers(c);
   else if (tab === 'markers') renderScenMarkers(c);
   else if (tab === 'symbols') renderScenSymbols(c);
   else if (tab === 'dice') renderScenDice(c);
@@ -4754,6 +5316,22 @@ function findOOBParent(entryId, side) {
   return search(roots);
 }
 
+// Walks up the OOB tree from a unit's OOB entry to find the nearest ancestor formation
+// and returns its abbreviation. Falls back to an auto-generated abbr from the formation
+// name so that units imported from older scenarios (or formations whose abbr was cleared)
+// still get a sensible label rather than nothing.
+function getUnitFormationAbbr(unit) {
+  if (!unit || !unit.oobEntryId || !unit.side) return '';
+  let parent = findOOBParent(unit.oobEntryId, unit.side);
+  while (parent) {
+    if (parent.type === 'formation') {
+      return parent.abbr || suggestFormationAbbr(parent.name || '') || '';
+    }
+    parent = findOOBParent(parent.id, unit.side);
+  }
+  return '';
+}
+
 function removeOOBEntry(id, side) {
   function remove(list) {
     const idx = list.findIndex(e => e.id === id);
@@ -4780,28 +5358,31 @@ function addOOBEntry(side, parentId, entry) {
 
 function renderOOB(c, side) {
   const roots = state.oob[side];
-  // The placer side uses this icon to mark suspected *enemy* contacts.
-  // Convention: suspectedIcons is keyed by the suspected (target) side, so the field shown in
-  // BLUFOR's OOB tab edits suspectedIcons.opfor (what BLUFOR uses to mark suspected OPFOR).
+  // Each side's OOB configures the custom SVG override for the suspected-enemy marker
+  // placed by that side. The marker's visual side is the opposite (BLUFOR marks OPFOR etc.).
   const susTarget = side === 'bluefor' ? 'opfor' : 'bluefor';
-  if (!state.scenario.suspectedIcons) state.scenario.suspectedIcons = {};
-  const susIcon = state.scenario.suspectedIcons[susTarget] || `SUSPECTED_${susTarget.toUpperCase()}_Question_mark_Unspecified.svg`;
-  let html = `<div class="section-head">OOB — ${side.toUpperCase()}</div>
+  const defaultName = `SUSPECTED_${sideAbbr(susTarget)}_Question_mark_Unspecified.svg`;
+  if (!state.scenario.suspectedIcons) state.scenario.suspectedIcons = { bluefor: '', opfor: '' };
+  const susSVG = state.scenario.suspectedIcons[susTarget] || '';
+  let html = `<div class="section-head">OOB — ${sideAbbr(side)}</div>
     <p style="font-size:11px;color:var(--text-dim);margin-bottom:8px">Define units and formations. During play, each side can only deploy units from its own OOB.</p>
-
-    <div class="field-group" style="border:1px solid var(--panel-border);border-radius:4px;padding:6px 8px;margin-bottom:10px">
-      <label style="font-size:11px">Icon file for suspected-${susTarget.toUpperCase()} markers placed by ${side.toUpperCase()}</label>
-      <input type="text" value="${esc(susIcon)}"
-        oninput="state.scenario.suspectedIcons['${susTarget}']=this.value;renderAllUnits()"
-        placeholder="${esc('SUSPECTED_' + susTarget.toUpperCase() + '_Question_mark_Unspecified.svg')}">
-      <div style="font-size:10px;color:var(--text-dim);margin-top:2px">Loaded from the scenario's local icon folder first, then from GitHub.</div>
-    </div>
 
     <div class="btn-row">
       <button class="small" onclick="promptAddOOB('${side}',null,'formation')">+ Formation</button>
       <button class="small" onclick="promptAddOOB('${side}',null,'unit')">+ Unit</button>
     </div>
-    <div style="margin-top:10px">${renderOOBList(roots, side, 0)}</div>`;
+    <div style="margin-top:10px">${renderOOBList(roots, side, 0)}</div>
+
+    <details style="margin-top:16px;border:1px solid var(--panel-border);border-radius:4px;padding:6px 8px">
+      <summary style="font-size:11px;color:var(--text-dim);cursor:pointer">Custom icon SVG for suspected-${sideAbbr(susTarget)} markers (advanced)</summary>
+      <div class="field-group" style="margin-top:8px">
+        <label style="font-size:11px">Custom SVG for suspected-${sideAbbr(susTarget)} markers placed by ${sideAbbr(side)} (optional — overrides default)</label>
+        <textarea style="min-height:60px;font-family:var(--mono);font-size:10px"
+          oninput="state.scenario.suspectedIcons['${susTarget}']=this.value;renderAllUnits()"
+          placeholder="Paste raw SVG here to override the default icon.">${esc(susSVG)}</textarea>
+        <div style="font-size:10px;color:var(--text-dim);margin-top:2px">If empty, the default <code>${esc(defaultName)}</code> is loaded from the scenario's local icon folder first, then from GitHub.</div>
+      </div>
+    </details>`;
   c.innerHTML = html;
 }
 
@@ -4814,9 +5395,12 @@ function renderOOBList(list, side, depth) {
     const deployed = e.deployed ? '✓' : '';
     const icon = isFormation ? '📁' : '▲';
     const deployedStyle = e.deployed ? 'color:var(--success)' : '';
+    const nameLabel = isFormation
+      ? `${esc(e.name)}${e.abbr ? ` <span style="color:var(--text-dim);font-size:10px">(${esc(e.abbr)})</span>` : ''}`
+      : `${esc(e.name)}${e.designation?' ('+esc(e.designation)+')':''}`;
     html += `<div class="list-item" style="margin-left:${indent}px">
       <span>${icon}</span>
-      <span class="name">${esc(e.name)}${e.designation?' ('+esc(e.designation)+')':''}</span>
+      <span class="name">${nameLabel}</span>
       ${!isFormation ? `<span class="meta" style="${deployedStyle}">${e.deployed ? 'deployed' : 'pool'}</span>` : ''}
       <div class="actions">
         ${isFormation ? `
@@ -4838,10 +5422,7 @@ function renderOOBList(list, side, depth) {
 
 function promptAddOOB(side, parentId, type) {
   if (type === 'formation') {
-    const name = prompt('Formation name:', 'Battlegroup Alpha');
-    if (!name) return;
-    addOOBEntry(side, parentId, { type: 'formation', name });
-    renderOOB(document.getElementById('scenContent'), side);
+    showFormationModal({ isNew: true, side, parentId, name: 'Battlegroup Alpha', abbr: 'BG A' });
     return;
   }
   // Unit: pick template first
@@ -4858,6 +5439,56 @@ function promptAddOOB(side, parentId, type) {
       <button onclick="confirmAddOOBUnit('${side}','${parentId||''}');this.closest('.modal-overlay').remove()">Add</button>
       <button onclick="this.closest('.modal-overlay').remove()">Cancel</button>
     </div>`);
+}
+
+// Modal for adding a new formation or editing an existing one. Handles both name and abbreviation.
+function showFormationModal(ctx) {
+  // ctx: { isNew, side, parentId?, entryId?, name, abbr }
+  const overlay = showModal(`
+    <h3>${ctx.isNew ? 'Add Formation' : 'Edit Formation'}</h3>
+    <div class="field-group"><label>Name</label>
+      <input type="text" id="fm_name" value="${esc(ctx.name || '')}" autofocus></div>
+    <div class="field-group"><label>Abbreviation (short label, e.g. "BG A" for Battlegroup Alpha)</label>
+      <input type="text" id="fm_abbr" value="${esc(ctx.abbr || '')}" placeholder="optional"></div>
+    <div class="btn-row">
+      <button id="fm_save">${ctx.isNew ? 'Add' : 'Save'}</button>
+      <button onclick="this.closest('.modal-overlay').remove()">Cancel</button>
+    </div>`);
+  // Auto-suggest abbr as user types name, unless they've already customised abbr
+  const nameEl = overlay.querySelector('#fm_name');
+  const abbrEl = overlay.querySelector('#fm_abbr');
+  let abbrDirty = !!(ctx.abbr && !ctx.isNew); // existing entries keep their abbr
+  abbrEl.addEventListener('input', () => { abbrDirty = true; });
+  nameEl.addEventListener('input', () => {
+    if (abbrDirty) return;
+    abbrEl.value = suggestFormationAbbr(nameEl.value);
+  });
+  // Focus name and select so typing replaces the template default
+  setTimeout(() => { nameEl.focus(); nameEl.select(); }, 40);
+  overlay.querySelector('#fm_save').onclick = () => {
+    const name = nameEl.value.trim();
+    const abbr = abbrEl.value.trim();
+    if (!name) return;
+    if (ctx.isNew) {
+      addOOBEntry(ctx.side, ctx.parentId, { type: 'formation', name, abbr });
+    } else {
+      const entry = findOOBEntry(ctx.entryId);
+      if (entry) { entry.name = name; entry.abbr = abbr; }
+    }
+    overlay.remove();
+    renderOOB(document.getElementById('scenContent'), ctx.side);
+  };
+}
+
+// Suggest a formation abbreviation: first word's first 2 letters (upper-case)
+// + space + first letter of each subsequent word (upper-case).
+// e.g. "Battlegroup Alpha" → "BG A", "1st Tank Battalion" → "1S T B".
+function suggestFormationAbbr(name) {
+  const words = String(name || '').trim().split(/\s+/).filter(Boolean);
+  if (words.length === 0) return '';
+  const head = words[0].slice(0, 2).toUpperCase();
+  const tail = words.slice(1).map(w => (w[0] || '').toUpperCase()).join(' ');
+  return tail ? `${head} ${tail}` : head;
 }
 
 function confirmAddOOBUnit(side, parentId) {
@@ -4886,8 +5517,7 @@ function editOOBEntry(id) {
   const entry = findOOBEntry(id);
   if (!entry) return;
   if (entry.type === 'formation') {
-    const newName = prompt('Formation name:', entry.name);
-    if (newName) { entry.name = newName; renderOOB(document.getElementById('scenContent'), entry.side); }
+    showFormationModal({ isNew: false, side: entry.side, entryId: entry.id, name: entry.name, abbr: entry.abbr || '' });
     return;
   }
   // Unit entry — full editor
@@ -5099,17 +5729,22 @@ function editUnitTemplate(id, stateIdx) {
     html += `<div class="section-head">Range Rings — ${esc(st.abbr||st.name)}</div>`;
     (st.rangeRings||[]).forEach((r, idx) => {
       html += `<div class="inline-row">
+        <input type="checkbox" ${r.visible?'checked':''} onchange="${sp}.rangeRings[${idx}].visible=this.checked" title="Show ring on map (default when unit is deployed)">
         <input type="text" value="${esc(r.name)}" placeholder="Name" oninput="${sp}.rangeRings[${idx}].name=this.value" style="flex:1;font-size:11px">
         <input type="text" value="${esc(r.abbr||'')}" placeholder="Abbr" oninput="${sp}.rangeRings[${idx}].abbr=this.value" style="width:45px;font-size:11px">
         <input type="number" value="${r.value}" step="100" min="0" oninput="${sp}.rangeRings[${idx}].value=parseFloat(this.value)||0" style="width:60px">
         <input type="color" value="${r.color||'#ff0000'}" oninput="${sp}.rangeRings[${idx}].color=this.value" style="width:30px">
+        <label title="Show label on map" style="font-size:10px;white-space:nowrap"><input type="checkbox" ${r.showLabel!==false?'checked':''} onchange="${sp}.rangeRings[${idx}].showLabel=this.checked">Lbl</label>
         <button class="small danger" onclick="${sp}.rangeRings.splice(${idx},1);editUnitTemplate('${id}')">×</button>
       </div>`;
     });
-    html += `<button class="small" onclick="${sp}.rangeRings.push({id:uid(),name:'',abbr:'',value:0,color:'#e94560',visible:false,notes:'',showTooltip:true,showOpponent:false});editUnitTemplate('${id}')">+ Add Range Ring</button>`;
+    html += `<button class="small" onclick="${sp}.rangeRings.push({id:uid(),name:'',abbr:'',value:0,color:'#e94560',visible:false,showLabel:true,notes:'',showTooltip:true,showOpponent:false});editUnitTemplate('${id}')">+ Add Range Ring</button>`;
   }
 
   html += `
+    <div class="section-head">Available Modifiers</div>
+    <p style="font-size:11px;color:var(--text-dim);margin-bottom:6px">Tick which modifiers from the scenario library are available for units created from this template. Empty = all available.</p>
+    ${renderTemplateModifierList(t)}
     <div class="section-head">Custom Unit SVG (overrides generated icon)</div>
     <textarea style="min-height:60px;font-family:var(--mono);font-size:10px" oninput="${tp}.customSVG=this.value||null">${esc(t.customSVG||'')}</textarea>
     <div class="section-head">Default Notes</div>
@@ -5141,6 +5776,413 @@ function editUnitTemplate(id, stateIdx) {
 function updateTemplateField(id, field, value) {
   const t = state.unitTemplates.find(x => x.id === id);
   if (t) t[field] = value;
+}
+
+// ─── Modifier Library (Scenario Builder → Modifiers tab) ─────────────────
+// Lists every modifier in the scenario library; allows editing each, adding new, deleting.
+// Modifiers combine with units via state.scenario.modifiers (the library) and
+// unit.modifiers (instances on a specific unit).
+function renderScenModifiers(c) {
+  let html = `<div class="section-head">Modifier Library</div>
+    <p style="font-size:11px;color:var(--text-dim);margin-bottom:8px">
+      Modifiers are overlays applied to units (on top of the unit's active state). Boolean
+      modifiers are on/off; counter modifiers have sequential levels a player can advance
+      (e.g. ATGM shots 2 → 1). Each unit template can whitelist which modifiers are relevant.
+    </p>`;
+  const mods = (state.scenario.modifiers || []).slice().sort((a,b) => (a.stackPriority||99) - (b.stackPriority||99));
+  if (mods.length === 0) {
+    html += `<p style="font-size:11px;color:var(--text-dim)">No modifiers yet. Add one below.</p>`;
+  }
+  mods.forEach(m => {
+    const typeLabel = m.type === 'counter' ? `${(m.levels||[]).length}-level counter` : 'boolean';
+    const sample = m.type === 'counter' && m.levels && m.levels.length
+      ? m.levels.map(l => esc(l.abbr)).join(' → ') : esc(m.abbr || '');
+    html += `<div class="list-item">
+      <span class="name"><b>${esc(m.name)}</b> <span style="font-size:10px;color:var(--text-dim)">(${esc(m.abbr||'')})</span></span>
+      <span class="meta" style="font-size:10px">${typeLabel} · ${sample}</span>
+      <button class="small" onclick="openModifierEditor('${m.id}')">Edit</button>
+      <button class="small danger" onclick="deleteModifierDef('${m.id}')">×</button>
+    </div>`;
+  });
+  html += `<div class="btn-row" style="margin-top:8px">
+    <button onclick="openModifierEditor(null)">+ Add Modifier</button>
+    <button class="ghost" onclick="resetModifierLibraryToDefaults()" title="Replace the current library with the Battlegroup Clash defaults">Reset to BGC Defaults</button>
+  </div>`;
+  c.innerHTML = html;
+}
+
+function deleteModifierDef(id) {
+  confirmModal('Delete this modifier from the scenario library? Units currently using it will keep their instances but may render without an icon.').then(ok => {
+    if (!ok) return;
+    state.scenario.modifiers = state.scenario.modifiers.filter(m => m.id !== id);
+    renderScenModifiers(document.getElementById('scenContent'));
+    renderAllUnits();
+  });
+}
+
+function resetModifierLibraryToDefaults() {
+  confirmModal('Replace the current modifier library with the Battlegroup Clash defaults? Current custom modifiers will be lost.').then(ok => {
+    if (!ok) return;
+    state.scenario.modifiers = defaultModifierLibrary();
+    renderScenModifiers(document.getElementById('scenContent'));
+    renderAllUnits();
+  });
+}
+
+// Modifier add/edit modal. If id is null → creating new; otherwise editing by id.
+function openModifierEditor(id) {
+  const existing = id ? findModifierDef(id) : null;
+  const m = existing ? cloneDeep(existing) : {
+    id: 'mod_' + Math.random().toString(36).slice(2, 8),
+    name: '', abbr: '',
+    description: '',
+    type: 'boolean',
+    color: '#888',
+    iconSVG: '',
+    levels: [
+      { abbr: 'A', label: '', color: '#888', iconSVG: '' },
+      { abbr: 'B', label: '', color: '#666', iconSVG: '' }
+    ],
+    startLevel: 0, removeAtLevel: null, stackPriority: 5,
+    visibleToOpponent: false,
+    addPermission: 'owner', removePermission: 'owner', stepPermission: 'owner'
+  };
+  const overlay = showModal(renderModifierEditorHTML(m, !!existing));
+  wireModifierEditor(overlay, m, !!existing);
+}
+
+function renderModifierEditorHTML(m, isEdit) {
+  const permOpts = (sel) => ['umpire','owner','opponent','any'].map(p =>
+    `<option value="${p}" ${sel===p?'selected':''}>${p}</option>`).join('');
+  return `
+    <h3>${isEdit ? 'Edit Modifier' : 'Add Modifier'}</h3>
+    <div class="field-group row">
+      <div style="flex:2"><label>Name</label>
+        <input type="text" id="mod_name" value="${esc(m.name)}"></div>
+      <div style="flex:1"><label>Abbr</label>
+        <input type="text" id="mod_abbr" value="${esc(m.abbr)}" maxlength="8"></div>
+    </div>
+    <div class="field-group"><label>Description</label>
+      <textarea id="mod_desc" rows="2">${esc(m.description||'')}</textarea></div>
+    <div class="field-group row">
+      <div><label>Type</label>
+        <select id="mod_type">
+          <option value="boolean" ${m.type==='boolean'?'selected':''}>Boolean (on/off)</option>
+          <option value="counter" ${m.type==='counter'?'selected':''}>Counter (sequential levels)</option>
+        </select></div>
+      <div><label>Stack Priority (lower = first)</label>
+        <input type="number" id="mod_prio" value="${m.stackPriority||5}" min="0" max="99"></div>
+    </div>
+    <div id="mod_booleanFields" style="display:${m.type==='boolean'?'block':'none'}">
+      <div class="field-group row">
+        <div><label>Colour</label>
+          <input type="color" id="mod_color" value="${m.color||'#888'}"></div>
+      </div>
+      <div class="field-group"><label>Icon SVG (optional)</label>
+        <textarea id="mod_iconSVG" rows="2" placeholder="Paste raw SVG to use as the map badge (overrides colour+abbr chip).">${esc(m.iconSVG||'')}</textarea></div>
+    </div>
+    <div id="mod_counterFields" style="display:${m.type==='counter'?'block':'none'}">
+      <label style="font-size:11px;color:var(--text-dim)">Levels (sequence the modifier steps through)</label>
+      <div id="mod_levels"></div>
+      <div class="btn-row"><button class="small" id="mod_addLevel">+ Add Level</button></div>
+      <div class="field-group row">
+        <div><label>Start at level</label>
+          <select id="mod_startLevel"></select></div>
+        <div><label>Auto-remove at level (blank = never)</label>
+          <select id="mod_removeAt"></select></div>
+      </div>
+    </div>
+    <div class="section-head" style="margin-top:10px">Permissions & Visibility</div>
+    <div class="field-group row">
+      <div><label>Add</label><select id="mod_addP">${permOpts(m.addPermission||'owner')}</select></div>
+      <div><label>Remove</label><select id="mod_remP">${permOpts(m.removePermission||'owner')}</select></div>
+      <div id="mod_stepWrap" style="flex:1;display:${m.type==='counter'?'block':'none'}"><label>Step</label><select id="mod_stepP">${permOpts(m.stepPermission||'owner')}</select></div>
+    </div>
+    <div class="field-group">
+      <label style="display:flex;align-items:center;gap:6px;font-weight:normal;cursor:pointer">
+        <input type="checkbox" id="mod_visOpp" ${m.visibleToOpponent?'checked':''}>
+        <span>Visible to opponent when unit is detected/identified</span>
+      </label>
+    </div>
+    <div class="btn-row">
+      <button id="mod_save">${isEdit ? 'Save' : 'Add'}</button>
+      <button onclick="this.closest('.modal-overlay').remove()">Cancel</button>
+    </div>
+  `;
+}
+
+function wireModifierEditor(overlay, m, isEdit) {
+  const $ = sel => overlay.querySelector(sel);
+  function renderLevels() {
+    const levelsEl = $('#mod_levels');
+    const startEl = $('#mod_startLevel');
+    const remEl = $('#mod_removeAt');
+    levelsEl.innerHTML = '';
+    (m.levels || []).forEach((lvl, idx) => {
+      const row = document.createElement('div');
+      row.className = 'inline-row';
+      row.innerHTML = `
+        <span style="font-size:10px;color:var(--text-dim);min-width:20px">#${idx}</span>
+        <input type="text" placeholder="Abbr" value="${esc(lvl.abbr||'')}" maxlength="8" data-field="abbr" style="width:60px">
+        <input type="text" placeholder="Label (tooltip text)" value="${esc(lvl.label||'')}" data-field="label" style="flex:1">
+        <input type="color" value="${lvl.color||'#888'}" data-field="color">
+        <button class="small danger" data-del="${idx}" ${m.levels.length<=1?'disabled':''}>×</button>`;
+      row.querySelectorAll('input').forEach(inp => {
+        inp.addEventListener('input', e => {
+          m.levels[idx][e.target.dataset.field] = e.target.value;
+        });
+      });
+      row.querySelector('[data-del]').addEventListener('click', () => {
+        m.levels.splice(idx, 1);
+        if (m.startLevel >= m.levels.length) m.startLevel = 0;
+        renderLevels();
+      });
+      levelsEl.appendChild(row);
+    });
+    // start + removeAt dropdowns
+    startEl.innerHTML = m.levels.map((l,i)=>`<option value="${i}" ${m.startLevel===i?'selected':''}>#${i} ${esc(l.abbr||'')}</option>`).join('');
+    remEl.innerHTML = `<option value="">(never)</option>` + m.levels.map((l,i)=>`<option value="${i}" ${m.removeAtLevel===i?'selected':''}>#${i} ${esc(l.abbr||'')}</option>`).join('');
+  }
+  $('#mod_type').addEventListener('change', e => {
+    m.type = e.target.value;
+    $('#mod_booleanFields').style.display = m.type === 'boolean' ? 'block' : 'none';
+    $('#mod_counterFields').style.display = m.type === 'counter' ? 'block' : 'none';
+    $('#mod_stepWrap').style.display = m.type === 'counter' ? 'block' : 'none';
+    if (m.type === 'counter' && (!m.levels || m.levels.length < 2)) {
+      m.levels = [ { abbr: 'A', label: '', color: '#888' }, { abbr: 'B', label: '', color: '#666' } ];
+      renderLevels();
+    }
+  });
+  $('#mod_addLevel')?.addEventListener('click', () => {
+    m.levels.push({ abbr: '', label: '', color: '#888' });
+    renderLevels();
+  });
+  $('#mod_startLevel')?.addEventListener('change', e => { m.startLevel = parseInt(e.target.value) || 0; });
+  $('#mod_removeAt')?.addEventListener('change', e => {
+    m.removeAtLevel = e.target.value === '' ? null : parseInt(e.target.value);
+  });
+  if (m.type === 'counter') renderLevels();
+  $('#mod_save').addEventListener('click', () => {
+    m.name = $('#mod_name').value.trim();
+    m.abbr = $('#mod_abbr').value.trim();
+    m.description = $('#mod_desc').value;
+    m.stackPriority = parseInt($('#mod_prio').value) || 5;
+    m.addPermission = $('#mod_addP').value;
+    m.removePermission = $('#mod_remP').value;
+    m.visibleToOpponent = $('#mod_visOpp').checked;
+    if (m.type === 'boolean') {
+      m.color = $('#mod_color').value;
+      m.iconSVG = $('#mod_iconSVG').value;
+      m.levels = undefined;
+      m.startLevel = undefined;
+      m.removeAtLevel = undefined;
+      m.stepPermission = undefined;
+    } else {
+      m.stepPermission = $('#mod_stepP').value;
+      m.iconSVG = undefined; m.color = undefined;
+    }
+    if (!m.name) { alert('Name is required.'); return; }
+    if (!state.scenario.modifiers) state.scenario.modifiers = [];
+    if (isEdit) {
+      const idx = state.scenario.modifiers.findIndex(x => x.id === m.id);
+      if (idx >= 0) state.scenario.modifiers[idx] = m;
+    } else {
+      state.scenario.modifiers.push(m);
+    }
+    overlay.remove();
+    renderScenModifiers(document.getElementById('scenContent'));
+    renderAllUnits();
+  });
+}
+
+// Checklist of scenario modifiers for template's availableModifierIds whitelist.
+function renderTemplateModifierList(t) {
+  const mods = (state.scenario.modifiers || []).slice()
+    .sort((a,b) => (a.stackPriority||99) - (b.stackPriority||99));
+  if (mods.length === 0) {
+    return `<p style="font-size:11px;color:var(--text-dim)">No modifiers in scenario library yet. Add some in the Modifiers tab.</p>`;
+  }
+  const sel = new Set(t.availableModifierIds || []);
+  let html = '<div style="display:flex;flex-direction:column;gap:2px">';
+  mods.forEach(m => {
+    html += `<label style="display:flex;align-items:center;gap:6px;font-size:11px;font-weight:normal;cursor:pointer">
+      <input type="checkbox" ${sel.has(m.id)?'checked':''} onchange="toggleTemplateModifier('${t.id}','${m.id}',this.checked)">
+      <span><b>${esc(m.name)}</b> <span style="color:var(--text-dim);font-size:10px">(${esc(m.abbr||'')})</span></span>
+    </label>`;
+  });
+  html += '</div>';
+  return html;
+}
+
+function toggleTemplateModifier(templateId, modifierId, checked) {
+  const t = state.unitTemplates.find(x => x.id === templateId);
+  if (!t) return;
+  if (!t.availableModifierIds) t.availableModifierIds = [];
+  if (checked) {
+    if (!t.availableModifierIds.includes(modifierId)) t.availableModifierIds.push(modifierId);
+  } else {
+    t.availableModifierIds = t.availableModifierIds.filter(id => id !== modifierId);
+  }
+}
+
+// ─── Unit-level modifier ops ─────────────────────────────────────────────
+// Which modifiers can be added to this unit by the current viewer? Filters scenario
+// library by (1) template's availability whitelist, (2) role's add permission, and
+// (3) not already attached (for booleans) or always-available (for counters user could
+// re-attach after removal).
+function getAvailableModifiersForUnit(unit) {
+  const lib = (state.scenario.modifiers || []).slice()
+    .sort((a,b) => (a.stackPriority||99) - (b.stackPriority||99));
+  const template = state.unitTemplates.find(t => t.id === unit.templateId);
+  const whitelist = (template && template.availableModifierIds && template.availableModifierIds.length > 0)
+    ? new Set(template.availableModifierIds) : null; // null = all allowed
+  const activeIds = new Set((unit.modifiers||[]).map(mi => mi.modifierId));
+  return lib.filter(def => {
+    if (whitelist && !whitelist.has(def.id)) return false;
+    if (!roleHasPermission(def.addPermission || 'owner', unit.side)) return false;
+    if (activeIds.has(def.id)) return false; // already attached — no duplicate instances
+    return true;
+  });
+}
+
+function addUnitModifier(unitId, modifierId) {
+  const unit = getUnit(unitId);
+  const def = findModifierDef(modifierId);
+  if (!unit || !def) return;
+  if (!unit.modifiers) unit.modifiers = [];
+  if (unit.modifiers.find(mi => mi.modifierId === modifierId)) return;
+  unit.modifiers.push({
+    modifierId,
+    level: def.type === 'counter' ? (def.startLevel || 0) : 0,
+    addedBy: state.viewRole,
+    addedTurn: state.turnNumber,
+    notes: ''
+  });
+  logCommitted(`${unit.name}: +${def.abbr || def.name}${def.type==='counter' ? ' [' + ((def.levels||[])[def.startLevel||0]?.abbr || '?') + ']' : ''}`);
+  renderUnit(unit);
+  refreshUnitEditPanelIfShowing(unitId);
+}
+
+function removeUnitModifier(unitId, modifierId) {
+  const unit = getUnit(unitId);
+  const def = findModifierDef(modifierId);
+  if (!unit || !unit.modifiers) return;
+  unit.modifiers = unit.modifiers.filter(mi => mi.modifierId !== modifierId);
+  logCommitted(`${unit.name}: -${(def && (def.abbr||def.name)) || modifierId}`);
+  renderUnit(unit);
+  refreshUnitEditPanelIfShowing(unitId);
+}
+
+// Step a counter modifier forward (+1) or backward (-1). Returns silently if unit has no
+// such instance, if def isn't a counter, or if the step would go out of range. Applies
+// auto-removal when stepping onto removeAtLevel.
+function stepUnitModifier(unitId, modifierId, delta) {
+  const unit = getUnit(unitId);
+  const def = findModifierDef(modifierId);
+  if (!unit || !def || def.type !== 'counter') return;
+  const inst = (unit.modifiers||[]).find(mi => mi.modifierId === modifierId);
+  if (!inst) return;
+  const maxIdx = (def.levels||[]).length - 1;
+  const next = (inst.level || 0) + delta;
+  if (next < 0 || next > maxIdx) return;
+  inst.level = next;
+  // Auto-remove if we've stepped onto the configured removal level.
+  if (def.removeAtLevel != null && next === def.removeAtLevel) {
+    logCommitted(`${unit.name}: ${def.abbr||def.name} exhausted → removed`);
+    unit.modifiers = unit.modifiers.filter(mi => mi.modifierId !== modifierId);
+  } else {
+    const lvl = (def.levels||[])[next];
+    logCommitted(`${unit.name}: ${def.abbr||def.name} → [${lvl?.abbr||'?'}]`);
+  }
+  renderUnit(unit);
+  refreshUnitEditPanelIfShowing(unitId);
+}
+
+// ─── Unit edit panel: Modifiers section ──────────────────────────────────
+function renderUnitModifiersSection(unit) {
+  const role = state.viewRole;
+  const active = (unit.modifiers || []).slice()
+    .map(mi => ({ inst: mi, def: findModifierDef(mi.modifierId) }))
+    .filter(x => x.def)
+    .filter(x => canViewerSeeModifier(unit, x.def))
+    .sort((a,b) => (a.def.stackPriority||99) - (b.def.stackPriority||99));
+  const available = (role === 'umpire' || role === unit.side || role === 'bluefor' || role === 'opfor')
+    ? getAvailableModifiersForUnit(unit) : [];
+
+  let html = `<div class="section-head">Modifiers</div>`;
+  if (active.length === 0) {
+    html += `<p style="font-size:11px;color:var(--text-dim);margin:0 0 6px 0">None active.</p>`;
+  } else {
+    active.forEach(({ inst, def }) => {
+      const isCounter = def.type === 'counter';
+      const lvl = isCounter ? (def.levels||[])[inst.level||0] : null;
+      const chipColor = (lvl && lvl.color) || def.color || '#888';
+      const chipText = isCounter ? (lvl?.abbr || '?') : (def.abbr || '?');
+      const chipTitle = esc((isCounter ? (lvl?.label || '') : (def.description || '')) || def.name);
+      const canStep = isCounter && roleHasPermission(def.stepPermission || 'owner', unit.side);
+      const canRemove = roleHasPermission(def.removePermission || 'owner', unit.side);
+      const maxIdx = isCounter ? ((def.levels||[]).length - 1) : 0;
+      const atMin = (inst.level||0) <= 0;
+      const atMax = (inst.level||0) >= maxIdx;
+      // Step buttons: hidden entirely when the role has no step permission. Shown but
+      // disabled when the role CAN step but the counter is at an end of its range.
+      const stepButtons = isCounter && canStep
+        ? `<button class="small" ${atMin?'disabled':''} onclick="stepUnitModifier('${unit.id}','${def.id}',-1)" title="Step back">◀</button>
+           <button class="small" ${atMax?'disabled':''} onclick="stepUnitModifier('${unit.id}','${def.id}',1)" title="Step forward">▶</button>`
+        : '';
+      // Remove button: hidden entirely when the role has no remove permission.
+      const removeButton = canRemove
+        ? `<button class="small danger" onclick="removeUnitModifier('${unit.id}','${def.id}')" title="Remove modifier">×</button>`
+        : '';
+      html += `<div class="inline-row" style="font-size:11px">
+        <span title="${chipTitle}" style="background:${chipColor};color:#fff;padding:2px 8px;border-radius:3px;font-weight:700;min-width:40px;text-align:center">${esc(chipText)}</span>
+        <span style="flex:1">${esc(def.name)}${isCounter && lvl ? ` <span style="color:var(--text-dim);font-size:10px">— ${esc(lvl.label||'')}</span>` : ''}</span>
+        ${stepButtons}
+        ${removeButton}
+      </div>`;
+    });
+  }
+  if (available.length > 0) {
+    const opts = available.map(d => `<option value="${d.id}">${esc(d.name)} (${esc(d.abbr||'')})</option>`).join('');
+    html += `<div class="inline-row" style="margin-top:4px">
+      <select id="mod_add_${unit.id}" style="flex:1;font-size:11px"><option value="">Add modifier…</option>${opts}</select>
+      <button class="small" onclick="(function(){var s=document.getElementById('mod_add_${unit.id}');if(s.value){addUnitModifier('${unit.id}',s.value);s.value='';}})()">Add</button>
+    </div>`;
+  }
+  return html;
+}
+
+// ─── Map-side modifier badges ────────────────────────────────────────────
+// Produce HTML for modifier chips to stack beside a unit's icon. Empty string if none
+// visible. Chips stack vertically, sized relative to the unit icon, with tooltips.
+function renderUnitModifierBadges(unit, iconW, iconH, fontSz) {
+  if (!unit.modifiers || unit.modifiers.length === 0) return '';
+  const badges = unit.modifiers
+    .map(mi => ({ inst: mi, def: findModifierDef(mi.modifierId) }))
+    .filter(x => x.def && canViewerSeeModifier(unit, x.def))
+    .sort((a,b) => (a.def.stackPriority||99) - (b.def.stackPriority||99));
+  if (badges.length === 0) return '';
+  const badgeFont = Math.max(9, Math.round(fontSz * 0.8));
+  const badgeH = Math.round(badgeFont * 1.6);
+  let out = '';
+  badges.forEach((b, idx) => {
+    const { inst, def } = b;
+    const isCounter = def.type === 'counter';
+    const lvl = isCounter ? (def.levels||[])[inst.level||0] : null;
+    const color = (lvl && lvl.color) || def.color || '#555';
+    const abbr = isCounter ? (lvl?.abbr || '?') : (def.abbr || '?');
+    const title = esc(((lvl && lvl.label) || def.description || def.name) + ` [${def.name}]`);
+    const topPx = idx * (badgeH + 2);
+    // Use an iconSVG if provided; otherwise colored chip with abbr text.
+    if ((isCounter && lvl && lvl.iconSVG) || (!isCounter && def.iconSVG)) {
+      const svg = isCounter ? lvl.iconSVG : def.iconSVG;
+      const svgUrl = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
+      out += `<img src="${svgUrl}" title="${title}" style="position:absolute;left:100%;top:${topPx}px;margin-left:2px;height:${badgeH}px;pointer-events:none">`;
+    } else {
+      out += `<span title="${title}" style="position:absolute;left:100%;top:${topPx}px;margin-left:2px;background:${color};color:#fff;padding:0 5px;height:${badgeH}px;line-height:${badgeH}px;border-radius:3px;font:bold ${badgeFont}px Arial,sans-serif;white-space:nowrap;pointer-events:none;box-shadow:0 0 0 1px #000">${esc(abbr)}</span>`;
+    }
+  });
+  return out;
 }
 
 function renderScenMarkers(c) {
@@ -5594,25 +6636,209 @@ function saveLayerEdit(id) {
 }
 
 // ── UNITS PANEL (list) ────────────────────────────────────────────
+// Which formations are currently collapsed in the Units panel. Module-scoped (not
+// persisted into the scenario save) — collapsibility is a view convenience, not data.
+const unitsPanelCollapsed = new Set();
+
+function toggleUnitsFormation(entryId) {
+  if (unitsPanelCollapsed.has(entryId)) unitsPanelCollapsed.delete(entryId);
+  else unitsPanelCollapsed.add(entryId);
+  refreshUnitsPanelIfOpen();
+}
+
 function renderUnitsPanel(body) {
-  if (state.units.length === 0) {
-    body.innerHTML = '<p style="color:var(--text-dim);font-size:12px">No units placed. Use ▲ tool to place.</p>';
+  // Sides visible to the current role. Umpire sees both; players see only their own.
+  const sides = state.viewRole === 'umpire' ? ['bluefor', 'opfor'] : [state.viewRole];
+
+  // Suspected-enemy markers that aren't tied to an OOB entry: show in a flat section per side.
+  let html = '';
+  sides.forEach(side => {
+    const oob = state.oob[side] || [];
+    const deployedInSide = state.units.filter(u => u.side === side && !u.isSuspectedMarker);
+    const hasContent = oob.length > 0 || deployedInSide.length > 0;
+    html += `<div class="section-head" style="color:${side==='bluefor'?'var(--blue-side)':'var(--red-side)'}">${sideAbbr(side)}</div>`;
+    if (!hasContent) {
+      html += `<p style="color:var(--text-dim);font-size:12px;margin:4px 0 10px 0">No OOB entries or deployed units.</p>`;
+      return;
+    }
+    if (oob.length > 0) html += renderUnitsTree(oob, side, 0);
+
+    // Any deployed units not linked to an OOB entry (e.g. placed directly via template)
+    const orphaned = deployedInSide.filter(u => !u.oobEntryId);
+    if (orphaned.length > 0) {
+      html += `<div style="margin-top:8px;padding-left:4px;font-size:11px;color:var(--text-dim)">Not in OOB:</div>`;
+      orphaned.forEach(u => { html += renderUnitsUnitRow(null, u, side, 0); });
+    }
+  });
+
+  body.innerHTML = html || '<p style="color:var(--text-dim);font-size:12px">Nothing to show in current role.</p>';
+}
+
+function renderUnitsTree(list, side, depth) {
+  let html = '';
+  list.forEach(e => {
+    if (e.type === 'formation') {
+      const collapsed = unitsPanelCollapsed.has(e.id);
+      const stats = getFormationDeployStats(e);
+      const indent = depth * 12;
+      const chev = collapsed ? '▶' : '▼';
+      html += `<div class="list-item" style="padding-left:${indent+2}px;cursor:pointer" onclick="toggleUnitsFormation('${e.id}')">
+        <span style="width:10px;display:inline-block">${chev}</span>
+        <span>📁</span>
+        <span class="name"><b>${esc(e.name)}</b>${e.abbr?` <span style="color:var(--text-dim);font-size:10px">(${esc(e.abbr)})</span>`:''}</span>
+        <span class="meta" style="font-size:10px;color:var(--text-dim)">${stats.deployed}/${stats.total}</span>
+      </div>`;
+      if (!collapsed && e.children && e.children.length) {
+        html += renderUnitsTree(e.children, side, depth + 1);
+      }
+    } else if (e.type === 'unit') {
+      const unit = e.unitId ? getUnit(e.unitId) : null;
+      html += renderUnitsUnitRow(e, unit, side, depth);
+    }
+  });
+  return html;
+}
+
+function renderUnitsUnitRow(entry, unit, side, depth) {
+  const indent = depth * 12 + 14;
+  const name = entry ? entry.name : unit.name;
+  const desig = entry ? entry.designation : unit.designation;
+  const nameLabel = `${esc(name)}${desig?' ('+esc(desig)+')':''}`;
+
+  // Derive status
+  let status, statusColor, actions, clickAction = '';
+  if (!unit) {
+    status = 'in pool';
+    statusColor = 'var(--text-dim)';
+    actions = `<button class="small" onclick="event.stopPropagation();startDeployOOBEntry('${entry.id}')">Deploy</button>`;
+  } else if (unit.transportedBy) {
+    const carrier = getUnit(unit.transportedBy);
+    status = carrier ? `in ${carrier.name}` : 'in transit';
+    statusColor = 'var(--accent)';
+    actions = `<button class="small" onclick="event.stopPropagation();dismountUnit('${unit.id}')">Dismount</button>
+               <button class="small" onclick="event.stopPropagation();confirmWithdrawUnit('${unit.id}')">Withdraw</button>`;
+  } else {
+    status = 'deployed';
+    statusColor = 'var(--success)';
+    const passengers = state.units.filter(u => u.transportedBy === unit.id);
+    const passengerBadge = passengers.length > 0 ? ` <span style="font-size:10px;color:var(--accent)">+${passengers.length}</span>` : '';
+    status += passengerBadge;
+    actions = `<button class="small" onclick="event.stopPropagation();openMountUnitModal('${unit.id}')" title="Mount this unit inside a carrier">Mount</button>
+               <button class="small" onclick="event.stopPropagation();confirmWithdrawUnit('${unit.id}')">Withdraw</button>`;
+    // Clicking the row pans to the unit and opens its edit panel
+    clickAction = `onclick="map.setView(getUnit('${unit.id}').latlng,map.getZoom());openUnitPanel(getUnit('${unit.id}'))"`;
+  }
+
+  const dotColor = side === 'bluefor' ? 'var(--blue-side)' : side === 'opfor' ? 'var(--red-side)' : '#888';
+  return `<div class="list-item" style="padding-left:${indent}px;${clickAction?'cursor:pointer':''}" ${clickAction}>
+    <span class="layer-dot" style="background:${dotColor}"></span>
+    <span class="name" style="font-size:11px">▲ ${nameLabel}</span>
+    <span class="meta" style="color:${statusColor};font-size:10px">${status}</span>
+    <div class="actions">${actions}</div>
+  </div>`;
+}
+
+// Count deployed units (and total units) under a formation, recursively.
+function getFormationDeployStats(formation) {
+  let total = 0, deployed = 0;
+  function walk(list) {
+    list.forEach(e => {
+      if (e.type === 'unit') {
+        total++;
+        if (e.unitId && getUnit(e.unitId)) deployed++;
+      } else if (e.type === 'formation' && e.children) {
+        walk(e.children);
+      }
+    });
+  }
+  if (formation.children) walk(formation.children);
+  return { total, deployed };
+}
+
+// Modal for mounting a unit into a carrier. Eligible carriers: same side, currently deployed
+// on the map, not a passenger themselves, not the unit being mounted.
+function openMountUnitModal(unitId) {
+  const unit = getUnit(unitId);
+  if (!unit) return;
+  const candidates = state.units.filter(c =>
+    c.id !== unit.id &&
+    c.side === unit.side &&
+    !c.isSuspectedMarker &&
+    !c.transportedBy &&
+    c.id !== unit.transportedBy
+  );
+  if (candidates.length === 0) {
+    alert('No eligible carriers: there are no other deployed ' + sideAbbr(unit.side) + ' units to mount into.');
     return;
   }
-  let html = '';
-  state.units.forEach(u => {
-    // Skip suspected-enemy markers — they're managed directly on the map
-    if (u.isSuspectedMarker) return;
-    // Roster: only own units + umpire sees all
-    if (state.viewRole !== 'umpire' && u.side !== state.viewRole) return;
-    const sideColor = u.side==='bluefor'?'#4a90d9':u.side==='opfor'?'#d94a4a':'#888';
-    html += `<div class="list-item" onclick="map.setView(getUnit('${u.id}').latlng,map.getZoom());openUnitPanel(getUnit('${u.id}'))">
-      <span class="layer-dot" style="background:${sideColor}"></span>
-      <span class="name">${esc(u.name)}${u.designation?' ('+esc(u.designation)+')':''}</span>
-      <span class="meta">${(() => { const as = getActiveState(u); return as ? esc(as.abbr||as.name) : '?'; })()}</span>
+  const options = candidates.map(c => {
+    const existing = state.units.filter(u => u.transportedBy === c.id).length;
+    return `<option value="${c.id}">${esc(c.name)}${c.designation?' ('+esc(c.designation)+')':''}${existing?` — carrying ${existing}`:''}</option>`;
+  }).join('');
+  showModal(`
+    <h3>Mount "${esc(unit.name)}"</h3>
+    <p style="font-size:12px;color:var(--text-dim)">Choose a carrier. The passenger will be removed from the map until dismounted.</p>
+    <div class="field-group"><label>Carrier</label>
+      <select id="mount_carrier">${options}</select></div>
+    <div class="btn-row">
+      <button onclick="confirmMountUnit('${unit.id}');this.closest('.modal-overlay').remove()">Mount</button>
+      <button onclick="this.closest('.modal-overlay').remove()">Cancel</button>
+    </div>`);
+}
+
+function confirmMountUnit(unitId) {
+  const carrierId = document.getElementById('mount_carrier').value;
+  mountUnit(unitId, carrierId);
+  // If the unit edit panel is showing this unit, refresh it so the transport section
+  // updates from Deployed → In {carrier}.
+  refreshUnitEditPanelIfShowing(unitId);
+}
+
+// Dismount + refresh the unit edit panel (if it's the active panel for this unit).
+function dismountUnitAndRefresh(unitId) {
+  dismountUnit(unitId);
+  refreshUnitEditPanelIfShowing(unitId);
+}
+
+// Withdraw with confirm, then close the panel if it was showing this unit (unit no longer exists).
+function withdrawFromEditPanel(unitId) {
+  confirmWithdrawUnit(unitId);
+  // confirmWithdrawUnit runs async; it'll close the panel itself via withdrawUnit's logic.
+}
+
+function refreshUnitEditPanelIfShowing(unitId) {
+  const unit = getUnit(unitId);
+  if (!unit) return;
+  const title = document.getElementById('panelTitle');
+  if (title && title.textContent === unit.name) {
+    renderUnitEditPanel(document.getElementById('panelBody'), unit);
+  }
+}
+
+// Transport section shown inside the unit edit panel. Contents depend on current state:
+// deployed → Mount / Withdraw; transported → Dismount / Withdraw; otherwise nothing.
+function renderUnitTransportSection(unit) {
+  if (unit.isSuspectedMarker) return '';
+  if (unit.transportedBy) {
+    const carrier = getUnit(unit.transportedBy);
+    const carrierName = carrier ? esc(carrier.name) : 'unknown carrier';
+    return `<div class="section-head">Transport</div>
+      <p style="font-size:11px;margin:0 0 6px 0">In <b>${carrierName}</b>. Dismount to place this unit back on the map (250 m NW of the carrier).</p>
+      <div class="btn-row">
+        <button class="small" onclick="dismountUnitAndRefresh('${unit.id}')">Dismount</button>
+        <button class="small danger" onclick="withdrawFromEditPanel('${unit.id}')">Withdraw to pool</button>
+      </div>`;
+  }
+  const passengers = state.units.filter(u => u.transportedBy === unit.id);
+  const passengerLine = passengers.length > 0
+    ? `<p style="font-size:11px;margin:0 0 6px 0">Currently carrying: ${passengers.map(p => esc(p.name)).join(', ')}.</p>`
+    : '';
+  return `<div class="section-head">Transport</div>
+    ${passengerLine}
+    <div class="btn-row">
+      <button class="small" onclick="openMountUnitModal('${unit.id}')" title="Mount this unit inside another unit as a passenger">Mount…</button>
+      <button class="small danger" onclick="withdrawFromEditPanel('${unit.id}')">Withdraw to pool</button>
     </div>`;
-  });
-  body.innerHTML = html || '<p style="color:var(--text-dim);font-size:12px">No units visible in current role.</p>';
 }
 
 // ── UNIT EDIT PANEL ──────────────────────────────────────────────
@@ -5661,11 +6887,11 @@ function renderUnitEditPanel(body, unit) {
       <div class="inline-row">
         <select onchange="setUnitDetection('${unit.id}','${otherSide}',this.value)">
           <option value="unknown" ${det==='unknown'?'selected':''}>Unknown (hidden)</option>
-          <option value="suspected" ${det==='suspected'?'selected':''}>Suspected (yellow ?)</option>
-          <option value="detected" ${det==='detected'?'selected':''}>Detected (numeric ID)</option>
+          <option value="detected" ${det==='detected'?'selected':''}>Detected (Question mark)</option>
+          <option value="identified" ${det==='identified'?'selected':''}>Identified (numeric ID)</option>
         </select>
       </div>
-      ${det === 'detected' ? `<p style="font-size:11px;color:var(--text-dim)">Enemy sees as #${unit.detectionId[otherSide] || '?'}</p>` : ''}`;
+      ${det === 'identified' ? `<p style="font-size:11px;color:var(--text-dim)">Enemy sees as #${unit.detectionId[otherSide] || '?'}</p>` : ''}`;
   }
 
   // Notes history
@@ -5730,6 +6956,10 @@ function renderUnitEditPanel(body, unit) {
         ${visChk('description')}
       </div>
     </div>
+
+    ${renderUnitTransportSection(unit)}
+
+    ${renderUnitModifiersSection(unit)}
 
     <div class="section-head">Active State</div>
     <div class="inline-row" style="margin-bottom:6px">
@@ -5823,26 +7053,29 @@ function renderUnitEditPanel(body, unit) {
     (activeState.rangeRings||[]).forEach((r, idx) => {
       if (isUmpire) {
         html += `<div class="inline-row">
-          <input type="checkbox" ${r.visible?'checked':''} onchange="${sp}.rangeRings[${idx}].visible=this.checked;renderUnitRangeRings(getUnit('${unit.id}'))" title="Show on map">
+          <input type="checkbox" ${r.visible?'checked':''} onchange="${sp}.rangeRings[${idx}].visible=this.checked;renderUnitRangeRings(getUnit('${unit.id}'))" title="Show ring on map">
           <input type="text" value="${esc(r.name)}" placeholder="Name" oninput="${sp}.rangeRings[${idx}].name=this.value" style="flex:1;font-size:11px">
           <input type="number" value="${r.value}" min="0" step="100" style="width:65px"
             oninput="${sp}.rangeRings[${idx}].value=parseFloat(this.value)||0;renderUnitRangeRings(getUnit('${unit.id}'))">
           <span style="font-size:10px">m</span>
           <input type="color" value="${r.color||'#ff0000'}" oninput="${sp}.rangeRings[${idx}].color=this.value;renderUnitRangeRings(getUnit('${unit.id}'))">
+          <label title="Show label on map" style="font-size:10px;white-space:nowrap"><input type="checkbox" ${r.showLabel!==false?'checked':''} onchange="${sp}.rangeRings[${idx}].showLabel=this.checked;renderUnitRangeRings(getUnit('${unit.id}'))">Lbl</label>
           <label title="Tooltip" style="font-size:10px;white-space:nowrap"><input type="checkbox" ${r.showTooltip?'checked':''} onchange="${sp}.rangeRings[${idx}].showTooltip=this.checked">Tip</label>
           <label title="Opponent" style="font-size:10px;white-space:nowrap"><input type="checkbox" ${r.showOpponent?'checked':''} onchange="${sp}.rangeRings[${idx}].showOpponent=this.checked";padding-right:4px">Opp</label>
           <button class="small danger" onclick="${sp}.rangeRings.splice(${idx},1);renderUnitRangeRings(getUnit('${unit.id}'));renderUnitEditPanel(document.getElementById('panelBody'),getUnit('${unit.id}'))">×</button>
         </div>`;
       } else {
         html += `<div class="inline-row" style="font-size:11px;padding:2px 0">
-          <input type="checkbox" ${r.visible?'checked':''} onchange="${sp}.rangeRings[${idx}].visible=this.checked;renderUnitRangeRings(getUnit('${unit.id}'))" title="Show on map">
+          <input type="checkbox" ${r.visible?'checked':''} onchange="${sp}.rangeRings[${idx}].visible=this.checked;renderUnitRangeRings(getUnit('${unit.id}'))" title="Show ring on map">
+          <input type="checkbox" ${r.showLabel!==false?'checked':''} onchange="${sp}.rangeRings[${idx}].showLabel=this.checked;renderUnitRangeRings(getUnit('${unit.id}'))" title="Show label on map">
+          <span style="font-size:10px;color:var(--text-dim)">Lbl</span>
           <span style="color:var(--text-dim);min-width:70px">${esc(r.abbr||r.name)}</span>
           <span style="font-weight:600">${r.value}m</span>
         </div>`;
       }
     });
     if (isUmpire) {
-      html += `<button class="small" onclick="${sp}.rangeRings.push({id:uid(),name:'',abbr:'',value:0,color:'#e94560',visible:false,notes:'',showTooltip:true,showOpponent:false});renderUnitEditPanel(document.getElementById('panelBody'),getUnit('${unit.id}'))">+ Add Range Ring</button>`;
+      html += `<button class="small" onclick="${sp}.rangeRings.push({id:uid(),name:'',abbr:'',value:0,color:'#e94560',visible:false,showLabel:true,notes:'',showTooltip:true,showOpponent:false});renderUnitEditPanel(document.getElementById('panelBody'),getUnit('${unit.id}'))">+ Add Range Ring</button>`;
     }
   } else {
     html += `<p style="font-size:11px;color:var(--text-dim)">No states defined. Add a state to configure unit capabilities.</p>`;
@@ -5891,14 +7124,14 @@ function ensureFV(unitId, field) {
 function setUnitDetection(unitId, side, state_) {
   const unit = getUnit(unitId);
   if (!unit) return;
-  const wasDetected = unit.detection[side] === 'detected';
+  const wasIdentified = unit.detection[side] === 'identified';
   unit.detection[side] = state_;
-  if (state_ === 'detected' && !wasDetected && unit.detectionId[side] == null) {
+  if (state_ === 'identified' && !wasIdentified && unit.detectionId[side] == null) {
     state.detectionCounters[side]++;
     unit.detectionId[side] = state.detectionCounters[side];
-    logCommitted(`Enemy unit detected (${side} view): assigned #${unit.detectionId[side]}`);
-  } else if (state_ === 'suspected' && !wasDetected) {
-    logCommitted(`Enemy activity suspected (${side} view)`);
+    logCommitted(`Enemy unit identified (${side} view): assigned #${unit.detectionId[side]}`);
+  } else if (state_ === 'detected' && !wasIdentified) {
+    logCommitted(`Enemy unit detected (${side} view)`);
   }
   renderUnit(unit);
 }
@@ -6179,23 +7412,16 @@ function getSyncRows(side) {
   function walk(list, depth) {
     list.forEach(e => {
       if (e.type === 'formation') {
-        rows.push({ id: e.id, name: e.name, depth, kind: 'formation' });
+        rows.push({ id: e.id, name: e.name, abbr: e.abbr || '', depth, kind: 'formation' });
         if (e.children && e.children.length) walk(e.children, depth + 1);
-      } else if (depth === 0 && rows.length === 0) {
-        // No formation seen yet at top level — allow loose units as fallback rows
-        rows.push({ id: e.id, name: e.name + (e.designation?' '+e.designation:''), depth, kind: 'unit' });
+      } else if (e.type === 'unit') {
+        // Every unit gets its own row — nested inside formations or loose at root.
+        const label = e.name + (e.designation ? ' ' + e.designation : '');
+        rows.push({ id: e.id, name: label, abbr: '', depth, kind: 'unit' });
       }
     });
   }
   walk(roots, 0);
-  // Fallback: if no formations at all, enumerate top-level units
-  if (rows.length === 0) {
-    roots.forEach(e => {
-      if (e.type === 'unit') {
-        rows.push({ id: e.id, name: e.name + (e.designation?' '+e.designation:''), depth: 0, kind: 'unit' });
-      }
-    });
-  }
   return rows;
 }
 
@@ -6214,12 +7440,12 @@ function renderSyncPanel(body, side) {
       <button class="${side==='opfor'?'active':''}" onclick="openPanel('sync',{side:'opfor'})">OPFOR</button>
     </div>`;
   }
-  html += `<div class="section-head">${side.toUpperCase()} Sync Matrix — ${cols} turns</div>`;
+  html += `<div class="section-head">${sideAbbr(side)} Sync Matrix — ${cols} turns</div>`;
   if (turnLimit === 0) {
     html += `<p style="font-size:10px;color:var(--text-dim)">Turn limit is off; matrix shows current + 3 turns (max 10 cols).</p>`;
   }
   if (rows.length === 0) {
-    html += `<p style="color:var(--text-dim);font-size:12px">No formations or units in ${side.toUpperCase()} OOB. Build the OOB first in the Scenario Builder.</p>`;
+    html += `<p style="color:var(--text-dim);font-size:12px">No formations or units in ${sideAbbr(side)} OOB. Build the OOB first in the Scenario Builder.</p>`;
     body.innerHTML = html;
     return;
   }
@@ -6231,7 +7457,8 @@ function renderSyncPanel(body, side) {
   html += `</tr></thead><tbody>`;
   rows.forEach(r => {
     const pad = r.depth * 10 + 4;
-    html += `<tr><td class="row-name ${r.kind}" style="padding-left:${pad}px">${esc(r.name)}</td>`;
+    const labelText = r.abbr ? `${esc(r.abbr)} — ${esc(r.name)}` : esc(r.name);
+    html += `<tr><td class="row-name ${r.kind}" style="padding-left:${pad}px">${labelText}</td>`;
     const rowData = state.syncMatrix[side][r.id] || {};
     for (let t = 0; t < cols; t++) {
       const val = rowData[t] || '';
@@ -6241,7 +7468,7 @@ function renderSyncPanel(body, side) {
     html += `</tr>`;
   });
   html += `</tbody></table></div>
-    <p style="font-size:10px;color:var(--text-dim);margin-top:8px">Rows auto-generated from ${side.toUpperCase()} OOB formations. Drag panel edge to widen.</p>`;
+    <p style="font-size:10px;color:var(--text-dim);margin-top:8px">Rows auto-generated from ${sideAbbr(side)} OOB formations. Drag panel edge to widen.</p>`;
   body.innerHTML = html;
 }
 
@@ -6269,6 +7496,38 @@ function importScenario(event) {
       const data = JSON.parse(e.target.result);
       if (!data.version) { alert('Invalid file'); return; }
       Object.assign(state, data);
+      // Migration: scenarios saved before the modifier system gain the default library
+      // and every unit gets an empty .modifiers array so rendering code that iterates
+      // over it doesn't need a null guard on every access.
+      if (!state.scenario.modifiers || !Array.isArray(state.scenario.modifiers)) {
+        state.scenario.modifiers = defaultModifierLibrary();
+      }
+      (state.units || []).forEach(u => { if (!Array.isArray(u.modifiers)) u.modifiers = []; });
+      // Migration: detection state values were renamed in v047 to match UI wording.
+      //   old 'detected'  (had numeric ID)      → new 'identified'
+      //   old 'suspected' (had question-mark)   → new 'detected'
+      // 'unknown' and 'self' are unchanged. Must rename 'detected' FIRST so the
+      // 'suspected' → 'detected' step doesn't collide with the old 'detected' values.
+      (state.units || []).forEach(u => {
+        if (!u.detection) return;
+        ['bluefor','opfor'].forEach(s => {
+          if (u.detection[s] === 'detected') u.detection[s] = 'identified';
+        });
+        ['bluefor','opfor'].forEach(s => {
+          if (u.detection[s] === 'suspected') u.detection[s] = 'detected';
+        });
+      });
+      // Migration: older files may carry a filename string in suspectedIcons rather than inline SVG.
+      // Treat anything that doesn't look like SVG as empty (falls through to default GitHub fetch).
+      if (state.scenario) {
+        if (!state.scenario.suspectedIcons) state.scenario.suspectedIcons = { bluefor: '', opfor: '' };
+        ['bluefor','opfor'].forEach(s => {
+          const v = state.scenario.suspectedIcons[s];
+          if (typeof v !== 'string' || !v.includes('<svg')) {
+            state.scenario.suspectedIcons[s] = '';
+          }
+        });
+      }
       document.getElementById('turnDisplay').textContent = `Turn ${state.turnNumber}`;
       if (state.layers.length > 0 && !state.currentLayerId) state.currentLayerId = state.layers[0].id;
       updateCurrentLayerDisplay();
@@ -6507,7 +7766,7 @@ function init() {
   if (vd) vd.textContent = APP_VERSION;
 }
 
-const APP_VERSION = 'v037';
+const APP_VERSION = 'v055';
 
 function setupPanelResize() {
   const handle = document.getElementById('panelResizeHandle');
