@@ -1,4 +1,4 @@
-# Battlegroup Clasher
+# BG Clasher
 
 A browser-based map and tracking tool for tabletop-style wargaming, built around
 real geography. Designed with [Sapper Studios' Battlegroup Clash: Baltics](https://www.sapperstudio.com/battlegr) in mind, but the data model is generic enough for most platoon- to battalion-level rules.
@@ -29,7 +29,7 @@ This is a **beta**. The core feature set is stable and I've tested it a bit, but
   which concepts are unclear from the Manual alone.
 - **Scenarios I haven't tried** — larger battles, nested formations, heavy
   modifier use, mounting chains, scenarios crossing the dateline or polar regions.
-- **Cross-browser behaviour** — I've mostly tested in Chrome.
+- **Cross-browser behaviour** — I've mostly tested in Firefox.
 - **Data safety** — I want to know if any operation silently loses state. Always
   export before experimenting.
 - **Rules-system fit** — Battlegroup Clasher ships with *Battlegroup Clash*
