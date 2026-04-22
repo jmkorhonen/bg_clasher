@@ -3,11 +3,11 @@
 A browser-based map and tracking tool for tabletop-style wargaming, built around
 real geography. Designed with [Sapper Studios' Battlegroup Clash: Baltics](https://www.sapperstudio.com/battlegr) in mind, but the data model is generic enough for most platoon- to battalion-level rules.
 
-Current version: **v055** (beta).
+Current version: **v061** (beta).
 
 ## Quick start
 
-1. Download `bg_clasher.html` for the latest version.
+1. Download `bg_clasher.html` (401 KB) for the latest version. OR download `bg_clasher.zip` for a package deal containing an example scenario too.
 2. Open it in any modern browser (Chrome, Firefox, Edge, Safari — desktop). No
    install, no server, no accounts. The whole app is a single HTML file.
 3. Use the role switcher (top-left: UMPIRE / BLUFOR / OPFOR) to choose your
@@ -41,9 +41,9 @@ This is a **beta**. The core feature set is stable and I've tested it a bit, but
 
 ### Scenario building
 - **Two-sided Order of Battle** (BLUFOR / OPFOR) organised as a tree of
-  formations and units, with formation abbreviations.
+  formations and units, with formation abbreviations. Can be exported and imported separately.
 - **Unit templates** with multiple mutually-exclusive states (e.g. Mounted /
-  Dismounted), each carrying its own stats, movement rates, and range rings.
+  Dismounted), each carrying its own stats, movement rates, and range rings. Can be exported and imported separately.
 - **Modifier library**: overlays on units that are orthogonal to state. Can be
   booleans (REORG on/off) or counters with sequential levels (ATGM shots 2→1,
   Suppressed→Disrupted). Each modifier defines its colour, who can add/remove/step
@@ -52,6 +52,9 @@ This is a **beta**. The core feature set is stable and I've tested it a bit, but
   named areas) with optional range rings.
 - **Icon scale slider** with per-scenario min/max bounds so zoom levels can be
   tuned for different map scales.
+- **Order arrow color/weight customisation.** Mostly for testing purposes.
+- **Optional passwords** for view changes. Saved in JSON file as cleartext, intended to prevent accidental role changes in 
+  Game mode, nothing more.
 
 ### Map and tools
 - **Leaflet-based** map (OpenStreetMap tiles by default). Zoom freely; icons
@@ -69,6 +72,7 @@ This is a **beta**. The core feature set is stable and I've tested it a bit, but
   constraints.
 - **Layers** for drawings, with per-layer owner side, visibility toggle, and
   edit-rights restriction.
+- **Multiple windows** support. One window for editing, others for displays.
 
 ### Detection and roles
 - **UMPIRE** sees everything. **BLUFOR** / **OPFOR** see only their own assets
@@ -80,7 +84,7 @@ This is a **beta**. The core feature set is stable and I've tested it a bit, but
   player-authored best guesses about where they think enemies are, independent
   of the umpire's detection system.
 - **Game Mode** toggle: enforces a handover screen when switching roles and
-  restricts the Scenario panel to umpire-only.
+  restricts the Scenario panel to umpire-only. Set optional passwords from Scenario menu if you want to prevent accidents.
 
 ### Mount / dismount
 - Any unit can carry any other unit as a passenger. Passengers are hidden from
@@ -104,6 +108,7 @@ This is a **beta**. The core feature set is stable and I've tested it a bit, but
   formats: modifier libraries are seeded if missing, detection states are
   renamed to match the current vocabulary, suspected-icon overrides are
   sanitised.
+- **Order of battles (OOBs)** can also be exported individually.
 
 ## Suggested playtest workflow
 
@@ -245,7 +250,7 @@ in that mode, which can prevent GitHub icon fetches. Two workarounds:
 - Configure a local icon folder (Scenario → General) with the icons
   pre-downloaded.
 
-## Known limitations in v055
+## Known limitations
 
 These are deliberate simplifications for the beta, not bugs:
 
@@ -300,5 +305,5 @@ Third-party components retain their own licences:
 
 ---
 
-*Battlegroup Clasher is built and maintained by Janne. Not affiliated with
+*BG Clasher is built and maintained by Janne. Not affiliated with
 the Battlegroup Clash rules authors.*

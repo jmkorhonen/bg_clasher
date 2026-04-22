@@ -172,11 +172,32 @@
         "removePermission": "umpire",
         "stepPermission": "opponent"
       }
-    ]
+    ],
+    "rolePasswords": {
+      "umpire": "",
+      "bluefor": "",
+      "opfor": ""
+    },
+    "sideColors": {
+      "bluefor": {
+        "arrow": "#2a6bc4",
+        "tooltipBg": "#1f3355",
+        "tooltipText": "#e0e0ff"
+      },
+      "opfor": {
+        "arrow": "#a83030",
+        "tooltipBg": "#4a2525",
+        "tooltipText": "#ffd8d8"
+      }
+    },
+    "orderGraphics": {
+      "scale": 1,
+      "lineWeights": {}
+    }
   },
   "viewRole": "bluefor",
   "turnNumber": 0,
-  "nextId": 155,
+  "nextId": 161,
   "currentLayerId": "l_tactical_bluefor",
   "syncMatrix": {
     "bluefor": {},
@@ -3670,7 +3691,7 @@
       "notesHistory": {},
       "previousLatlng": null,
       "detection": {
-        "bluefor": "detected",
+        "bluefor": "identified",
         "opfor": "self"
       },
       "detectionId": {
@@ -3890,7 +3911,7 @@
       "notesHistory": {},
       "previousLatlng": null,
       "detection": {
-        "bluefor": "detected",
+        "bluefor": "identified",
         "opfor": "self"
       },
       "detectionId": {
@@ -4110,7 +4131,7 @@
       "notesHistory": {},
       "previousLatlng": null,
       "detection": {
-        "bluefor": "detected",
+        "bluefor": "identified",
         "opfor": "self"
       },
       "detectionId": {
@@ -4968,133 +4989,6 @@
     },
     {
       "layerId": "l_tactical_bluefor",
-      "type": "polyline",
-      "geometry": {
-        "points": [
-          [
-            61.0957557042611,
-            27.088294029235843
-          ],
-          [
-            61.0961150287311,
-            27.088294029235843
-          ]
-        ]
-      },
-      "style": {
-        "color": "#e94560",
-        "weight": 2
-      },
-      "properties": {
-        "label": "Center",
-        "group": "id_148",
-        "groupLabel": "FIRE MISSION 1",
-        "groupType": "Range ring"
-      },
-      "id": "id_149"
-    },
-    {
-      "layerId": "l_tactical_bluefor",
-      "type": "polyline",
-      "geometry": {
-        "points": [
-          [
-            61.0959353664961,
-            27.087922322845795
-          ],
-          [
-            61.0959353664961,
-            27.08866573562589
-          ]
-        ]
-      },
-      "style": {
-        "color": "#e94560",
-        "weight": 2
-      },
-      "properties": {
-        "label": "Center",
-        "group": "id_148",
-        "groupLabel": "FIRE MISSION 1",
-        "groupType": "Range ring"
-      },
-      "id": "id_150"
-    },
-    {
-      "layerId": "l_tactical_bluefor",
-      "type": "circle",
-      "geometry": {
-        "center": [
-          61.0959353664961,
-          27.088294029235843
-        ],
-        "radius": 100
-      },
-      "style": {
-        "color": "#e94560",
-        "weight": 1,
-        "fillOpacity": 0,
-        "dashArray": "4,4"
-      },
-      "properties": {
-        "label": "100 m",
-        "group": "id_148",
-        "groupLabel": "FIRE MISSION 1",
-        "groupType": "Range ring"
-      },
-      "id": "id_151"
-    },
-    {
-      "layerId": "l_tactical_bluefor",
-      "type": "circle",
-      "geometry": {
-        "center": [
-          61.0959353664961,
-          27.088294029235843
-        ],
-        "radius": 200
-      },
-      "style": {
-        "color": "#e94560",
-        "weight": 1,
-        "fillOpacity": 0,
-        "dashArray": "4,4"
-      },
-      "properties": {
-        "label": "200 m",
-        "group": "id_148",
-        "groupLabel": "FIRE MISSION 1",
-        "groupType": "Range ring"
-      },
-      "id": "id_152"
-    },
-    {
-      "layerId": "l_tactical_bluefor",
-      "type": "circle",
-      "geometry": {
-        "center": [
-          61.0959353664961,
-          27.088294029235843
-        ],
-        "radius": 500
-      },
-      "style": {
-        "color": "#e94560",
-        "weight": 1,
-        "fillOpacity": 0,
-        "dashArray": "4,4",
-        "opacity": 1
-      },
-      "properties": {
-        "label": "500 m",
-        "group": "id_148",
-        "groupLabel": "FIRE MISSION 1",
-        "groupType": "Range ring"
-      },
-      "id": "id_153"
-    },
-    {
-      "layerId": "l_tactical_bluefor",
       "type": "text",
       "geometry": {
         "latlng": [
@@ -5109,6 +5003,132 @@
         "background": ""
       },
       "id": "id_154"
+    },
+    {
+      "layerId": "l_tactical_bluefor",
+      "type": "polyline",
+      "geometry": {
+        "points": [
+          [
+            61.094263201271986,
+            27.086706161499023
+          ],
+          [
+            61.097856445971956,
+            27.086706161499023
+          ]
+        ]
+      },
+      "style": {
+        "color": "#e94560",
+        "weight": 2
+      },
+      "properties": {
+        "label": "Center",
+        "group": "id_155",
+        "groupLabel": "FIRE MISSION 1",
+        "groupType": "Range ring"
+      },
+      "id": "id_156"
+    },
+    {
+      "layerId": "l_tactical_bluefor",
+      "type": "polyline",
+      "geometry": {
+        "points": [
+          [
+            61.09605982362197,
+            27.082989082974617
+          ],
+          [
+            61.09605982362197,
+            27.09042324002343
+          ]
+        ]
+      },
+      "style": {
+        "color": "#e94560",
+        "weight": 2
+      },
+      "properties": {
+        "label": "Center",
+        "group": "id_155",
+        "groupLabel": "FIRE MISSION 1",
+        "groupType": "Range ring"
+      },
+      "id": "id_157"
+    },
+    {
+      "layerId": "l_tactical_bluefor",
+      "type": "circle",
+      "geometry": {
+        "center": [
+          61.09605982362197,
+          27.086706161499023
+        ],
+        "radius": 1000
+      },
+      "style": {
+        "color": "#e94560",
+        "weight": 1,
+        "fillOpacity": 0,
+        "dashArray": "4,4"
+      },
+      "properties": {
+        "label": "1.00 km",
+        "group": "id_155",
+        "groupLabel": "FIRE MISSION 1",
+        "groupType": "Range ring"
+      },
+      "id": "id_158"
+    },
+    {
+      "layerId": "l_tactical_bluefor",
+      "type": "circle",
+      "geometry": {
+        "center": [
+          61.09605982362197,
+          27.086706161499023
+        ],
+        "radius": 2000
+      },
+      "style": {
+        "color": "#e94560",
+        "weight": 1,
+        "fillOpacity": 0,
+        "dashArray": "4,4"
+      },
+      "properties": {
+        "label": "2.00 km",
+        "group": "id_155",
+        "groupLabel": "FIRE MISSION 1",
+        "groupType": "Range ring"
+      },
+      "id": "id_159"
+    },
+    {
+      "layerId": "l_tactical_bluefor",
+      "type": "circle",
+      "geometry": {
+        "center": [
+          61.09605982362197,
+          27.086706161499023
+        ],
+        "radius": 5000
+      },
+      "style": {
+        "color": "#e94560",
+        "weight": 1,
+        "fillOpacity": 0,
+        "dashArray": "4,4"
+      },
+      "properties": {
+        "label": "5.00 km",
+        "group": "id_155",
+        "groupLabel": "FIRE MISSION 1",
+        "groupType": "Range ring"
+      },
+      "id": "id_160"
     }
   ],
   "movementOrders": [
@@ -5283,6 +5303,12 @@
       "type": "",
       "turn": 0,
       "time": "2026-04-20T14:39:23.874Z"
+    },
+    {
+      "text": "Scenario imported: Example Scenario - Tuohikotti",
+      "type": "",
+      "turn": 0,
+      "time": "2026-04-22T13:15:28.709Z"
     }
   ],
   "committedLog": [
