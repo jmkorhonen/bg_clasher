@@ -3185,8 +3185,9 @@ function helpPanelHTML() {
   return `
   <div style="padding:12px 14px;font-size:12px;line-height:1.5">
     <p style="color:var(--text-dim);margin-top:0">
-      Battlegroup Clasher — a browser-based wargame map tool. Hover the <b>?</b>
-      button (top bar) to reveal every button's tooltip at once.
+      BG Clasher — a browser-based wargame map tool. Hover the <b>?</b>
+      button (top bar) to flash every button's tooltip at once. The project repo
+      is at <a href="https://github.com/jmkorhonen/bg_clasher" target="_blank" rel="noopener">github.com/jmkorhonen/bg_clasher</a>.
     </p>
 
     <h3 style="margin:14px 0 6px 0">Roles</h3>
@@ -3195,42 +3196,42 @@ function helpPanelHTML() {
       <li><b>UMPIRE</b> — sees everything. Sets unit detection level, configures the scenario, adjudicates.</li>
       <li><b>BLUFOR</b> / <b>OPFOR</b> — only their own units, orders, and modifiers (unless flagged visible to opponent).</li>
     </ul>
-    <p>In <b>Game Mode</b> (🎮 top bar), role switches prompt a handover screen and restrict the Scenario panel.</p>
+    <p>In <b>Game Mode</b> (🎮 top bar) role switches prompt a handover screen and the Scenario panel is restricted to umpire. Optional per-role passwords (Scenario → General → Role Passwords) gate both the Game Mode toggle itself (umpire password) and taking over a role during handover (target-role password). Empty passwords = no prompt; passwords are stored opentext in the scenario JSON and exist to prevent accidental switches, not to secure against a determined player with access to the save file.</p>
 
     <h3 style="margin:14px 0 6px 0">Building a scenario</h3>
     <p>The <b>Scenario</b> button opens a tabbed builder:</p>
     <ul style="margin:4px 0 8px 18px;padding:0">
-      <li><b>General</b> — name, start date/time, turn duration, turn limit, icon scale.</li>
-      <li><b>OOB BLUFOR / OOB OPFOR</b> — each side's order of battle. Build a tree of formations and units; units in the OOB start in the pool and can be deployed onto the map. Click <i>+ Formation</i> (enter name and a short abbreviation) or <i>+ Unit</i>.</li>
-      <li><b>Unit Tpl</b> — reusable templates with states, stats, range rings, movement rates, icon, default notes, and which modifiers are available.</li>
-      <li><b>Modifiers</b> — the library of overlays units can carry (ATGM shots, REORG, Suppressed, etc.). Boolean (on/off) or counter (sequential levels like 2→1 ATGM shots). Each defines its colour, permissions (who can add/remove/step), and whether the opponent can see it.</li>
-      <li><b>Markers / Symbols / Dice</b> — templates for game markers, map symbols, and dice rollers.</li>
+      <li><b>General</b> — name, start date/time, turn duration, turn limit, icon scale (with per-scenario min/max bounds), local icon folder, Side Colours (BLUFOR/OPFOR arrow, tooltip bg, tooltip text), Order Graphics (arrow scale slider + per-order-type pixel weight overrides), Role Passwords, and Data Management (export/import of scenario, OOB+Templates, Graphics, and Templates-only).</li>
+      <li><b>OOB BLUFOR / OOB OPFOR</b> — each side's order of battle as a tree of formations and units. <i>+ Formation</i> (name + short abbreviation like "BG A") / <i>+ Unit</i>. Each tab has its own <b>Export ${'{SIDE}'} OOB</b> / <b>Import</b> buttons so individual sides can be saved and loaded independently, carrying only the unit templates they reference plus the modifier library.</li>
+      <li><b>Unit Tpl</b> — reusable templates with mutually-exclusive states (Mounted / Dismounted / …), each carrying its own stats, movement rates, and range rings (with per-ring <i>visible</i> and <i>label</i> toggles). Each template declares which modifiers are available for units built from it.</li>
+      <li><b>Modifiers</b> — the library of overlays units can carry. Boolean (REORG on/off, Dug in) or counter with sequential levels (ATGM 2→1, Suppressed → Disrupted). Per-modifier: colour (or SVG icon), stack priority, add/remove/step permissions (umpire / owner / opponent / any), and a visible-to-opponent flag. "Reset to BGC Defaults" reseeds the seven Battlegroup Clash defaults.</li>
+      <li><b>Markers / Symbols / Dice</b> — templates for game markers (objectives, IEDs, named areas — with optional range rings), map symbols (APP-6 or custom SVG), and dice rollers.</li>
     </ul>
 
     <h3 style="margin:14px 0 6px 0">Placing and moving units</h3>
     <ul style="margin:4px 0 8px 18px;padding:0">
-      <li><b>▲ Place Unit</b> (or keyboard <b>U</b>) — opens a modal to deploy from OOB or place a new unit from a template. Also the tool to place a <i>suspected enemy</i> marker (yellow-outlined APP-6 icon).</li>
-      <li><b>Drag</b> a unit icon to move it. Carried passengers follow along.</li>
-      <li><b>Move tool</b> — click a unit, then click a sequence of points to plot an ordered movement path with ETA, speed, and segment modes.</li>
-      <li><b>Edit tool + unit click</b> — withdraw the unit (confirms, cascades to passengers).</li>
+      <li><b>▲ Place Unit</b> (or keyboard <b>U</b>) — opens a modal to deploy from OOB or place a new unit from a template. Same tool places a <i>suspected enemy</i> marker (yellow-outlined APP-6 icon) for a side's best-guess enemy contacts.</li>
+      <li><b>Drag</b> a unit icon to move it. Carried passengers follow along; undo pulls them back with their carrier too.</li>
+      <li><b>Move tool</b> — click a unit, then click a sequence of points to plot an ordered movement path with ETA, speed, and segment modes. Clicking on another unit or marker uses that entity's exact position as a waypoint.</li>
+      <li><b>Edit tool + unit click</b> — withdraw the unit. Cascades to passengers with a confirmation naming them.</li>
     </ul>
 
-    <h3 style="margin:14px 0 6px 0">Unit details panel</h3>
-    <p>Click a unit (any tool except Move/Edit/Measure/Angle) to open its panel. Contents by section:</p>
+    <h3 style="margin:14px 0 6px 0">Unit edit panel</h3>
+    <p>Click a unit (any tool except Move/Edit/Measure/Angle/drawing tools) to open its panel. Sections:</p>
     <ul style="margin:4px 0 8px 18px;padding:0">
-      <li><b>Name / Designation / Side / Echelon</b> — with per-field visibility toggles (umpire only): <i>Tip</i> controls whether a field appears in the unit's map tooltip, <i>Opp</i> whether the opponent sees the field when the unit is identified.</li>
-      <li><b>Transport</b> — Mount the unit inside another friendly carrier, Dismount (lands 250 m NW of the carrier), or Withdraw to pool.</li>
-      <li><b>Modifiers</b> — chips show active modifiers. Counters have ◀/▶ to step, × to remove. Buttons only appear if the current role has permission.</li>
-      <li><b>Active State</b> — switches between mutually-exclusive postures (Mounted / Dismounted / Bypassing / whatever the template defines). Each state has its own stats, movement rates, range rings.</li>
-      <li><b>Orders</b> — pending movement orders for this unit, each with start/end time (either auto-computed from speed or manually fixed).</li>
-      <li><b>Stats / Movement / Range Rings</b> — for the active state. Umpire can edit; players see a summary. Range rings have <i>visible</i> and <i>label</i> toggles.</li>
-      <li><b>Detection</b> (umpire only) — how the opposing side sees this unit: <i>Unknown</i> / <i>Detected</i> (question mark, no info) / <i>Identified</i> (numeric ID + any opponent-visible fields).</li>
-      <li><b>Notes / Notes History</b> — per-turn notes snapshot at End Turn.</li>
+      <li><b>Name / Designation / Side / Echelon / Description</b> — per-field visibility toggles (umpire only): <i>Tip</i> controls the map tooltip, <i>Opp</i> controls whether the opponent sees the field when the unit is identified.</li>
+      <li><b>Transport</b> — Mount the unit inside a friendly carrier (any unit can carry any other); Dismount places it 250 m NW of the carrier and on top of the stack; Withdraw to pool (cascades to passengers).</li>
+      <li><b>Modifiers</b> — chips show active modifiers. Counters have ◀/▶ to step, × to remove. Buttons only render if the current role has permission.</li>
+      <li><b>Active State</b> — switches between mutually-exclusive postures. Each state has its own stats, movement rates, range rings.</li>
+      <li><b>Orders</b> — pending movement orders for this unit, each with start/end time (auto-computed from speed or manually fixed).</li>
+      <li><b>Stats / Movement / Range Rings</b> — for the active state. Umpire can edit; players see a summary plus the per-ring <i>visible</i> and <i>Lbl</i> checkboxes they're allowed to toggle.</li>
+      <li><b>Detection</b> (umpire only) — how the opposing side sees this unit: <i>Unknown</i> (hidden) / <i>Detected</i> (question-mark icon, no identifying info) / <i>Identified</i> (silhouette + numeric ID + opponent-visible fields).</li>
+      <li><b>Notes / Notes History</b> — free-text notes; snapshotted per turn at End Turn.</li>
     </ul>
 
     <h3 style="margin:14px 0 6px 0">Measurement</h3>
     <ul style="margin:4px 0 8px 18px;padding:0">
-      <li><b>📏 Measure</b> — click points to measure distance and bearing; clicking on a unit or marker picks its exact position.</li>
+      <li><b>📏 Measure</b> — click points to measure distance and bearing; clicking a unit or marker picks its exact position.</li>
       <li><b>∠ Angle</b> — click three points (A → vertex → B) to measure an angle; also accepts unit/marker clicks as anchor points.</li>
       <li><b>Escape</b> cancels in-progress measurements and clears existing ones.</li>
     </ul>
@@ -3238,29 +3239,45 @@ function helpPanelHTML() {
     <h3 style="margin:14px 0 6px 0">Drawing tools (polyline / polygon / circle / arrow / text / symbol)</h3>
     <ul style="margin:4px 0 8px 18px;padding:0">
       <li>Continuous drawing — after finishing one shape the tool stays active for the next.</li>
-      <li><b>Snap toolbar</b> — toggles angle and length snapping while drawing. Change the step by re-clicking the snap buttons.</li>
-      <li>Drawings live on <b>Layers</b>. Each layer has an owner side + visibility + edit rights. Use the layer chip (top bar) or the Layers panel to change active layer, hide a layer, or restrict edit rights.</li>
+      <li><b>Snap toolbar</b> — toggles angle and length snapping while drawing. Re-click the snap buttons to change the step.</li>
+      <li>Drawings live on <b>Layers</b>. Each layer has an owner side + visibility + edit-rights restriction. Use the layer chip (top bar) or the Layers panel to change active layer, hide a layer, or restrict who can edit it.</li>
+      <li>Clicks on units or markers pass through to the drawing tool so you can start lines, circles, or rings on top of existing icons.</li>
+    </ul>
+
+    <h3 style="margin:14px 0 6px 0">Order arrows</h3>
+    <ul style="margin:4px 0 8px 18px;padding:0">
+      <li>Order type (Move / Manoeuvre / Attack / Withdraw / Breach / Disrupt / Exploit / Feint / Raid) is chosen per order and drives the APP-6-inspired styling: parallel-line shaft for formation moves, hollow bracket arrowhead for attack, ticks-with-start-bar for breach, hook for withdraw, and so on.</li>
+      <li>In <b>Scenario → General → Order Graphics</b>, bump the arrow scale for battalion-level maps so orders remain readable at low zoom levels; override pixel line weight per order type; export/import the whole visual theme (side colours + graphics) as a bundle via <b>Export Graphics</b> / <b>Import Graphics</b>.</li>
     </ul>
 
     <h3 style="margin:14px 0 6px 0">Map utilities</h3>
     <ul style="margin:4px 0 8px 18px;padding:0">
-      <li><b>✛ Anchor crosshairs</b> — toggles a magenta cross at every visible unit/marker's stored lat/lng. Useful for verifying icon centering against range rings.</li>
+      <li><b>✛ Anchor crosshairs</b> — toggles a magenta cross at every visible unit/marker's stored lat/lng. Useful for verifying icon centering against range rings. Respects role visibility.</li>
       <li><b>📋 Tooltip cycle</b> — switches the map-label density for orders and markers (full / short / off).</li>
       <li><b>Layer chip</b> (top bar) — click to open the Layers panel; shows the currently active layer.</li>
     </ul>
 
     <h3 style="margin:14px 0 6px 0">Turns and the sync matrix</h3>
     <ul style="margin:4px 0 8px 18px;padding:0">
-      <li><b>End Turn</b> — snapshots state and advances the turn. Can auto-save a scenario file with <code>_END_OF_TURN</code> suffix.</li>
-      <li><b>Sync Matrix</b> — per-side planning matrix: rows are formations (with abbreviations) and units; columns are turns. Free-text cells.</li>
-      <li><b>Turns</b> — jump back to a previous turn's snapshot. Viewing a past turn is read-only until you either revert or advance.</li>
+      <li><b>End Turn</b> — snapshots state (units, markers, orders, notes, modifier state, sync matrix) and advances the turn counter. Optional auto-save with <code>_END_OF_TURN</code> suffix.</li>
+      <li><b>Sync Matrix</b> — per-side planning matrix. Rows are every formation (with abbreviations) and every individual unit; columns are turns. Free-text cells for pre-orders, intents, and adjudication notes.</li>
+      <li><b>Turns</b> — jump back to any past snapshot. Past turns are read-only until you revert.</li>
+    </ul>
+
+    <h3 style="margin:14px 0 6px 0">Mirror windows (multi-display)</h3>
+    <ul style="margin:4px 0 8px 18px;padding:0">
+      <li>Click <b>🖥️</b> in the top bar to open a mirror window. Drag it to a second monitor, or just keep it side-by-side for an extra view. A "(N mirrors open)" indicator next to the button tracks connected mirrors.</li>
+      <li>Each mirror picks its own role, pan, zoom, icon scale, and order-label mode — so the umpire can project a BLUFOR-view mirror and an OPFOR-view mirror from a single editor window. Handy for hand-over-the-device play at a table.</li>
+      <li>Mirrors are read-only: no drag, no editing, no End Turn. They receive live edits from the main window over a browser BroadcastChannel — no server required, no network traffic.</li>
     </ul>
 
     <h3 style="margin:14px 0 6px 0">Saving and loading</h3>
     <ul style="margin:4px 0 8px 18px;padding:0">
-      <li><b>💾 Export Scenario</b> — downloads the full state as JSON.</li>
-      <li><b>📂 Import Scenario</b> — loads a JSON file. Migrations run automatically for older formats.</li>
-      <li><b>Templates / Icons</b> — the Scenario tab's Import/Export buttons move templates between scenarios without carrying game state.</li>
+      <li><b>💾 Export Scenario</b> / <b>📂 Import Scenario</b> (top bar) — full state including turn history. Migrations run automatically on import.</li>
+      <li><b>Export OOB + Templates</b> / <b>Import OOB + Templates</b> (Scenario → General → Data Management) — both sides' OOB plus referenced templates plus modifier library. Single-sided files trigger a side-chooser modal so you can drop e.g. an OPFOR file into the BLUFOR slot.</li>
+      <li><b>Export ${'{SIDE}'} OOB</b> / <b>Import</b> (inside each OOB tab) — just that one side's tree plus only its referenced templates.</li>
+      <li><b>Export Graphics</b> / <b>Import Graphics</b> (Data Management) — side colours and order graphics as a reusable visual theme.</li>
+      <li><b>Export Templates Only</b> / <b>Import Templates</b> (Data Management) — unit / marker / symbol / dice templates plus the modifier library, without any scenario state.</li>
     </ul>
 
     <h3 style="margin:14px 0 6px 0">Keyboard shortcuts</h3>
@@ -3276,7 +3293,9 @@ function helpPanelHTML() {
     </ul>
 
     <p style="margin-top:18px;color:var(--text-dim);font-size:11px">
-      If something looks wrong or a feature feels missing, use <b>💾 Export Scenario</b> to save a copy first, then describe the issue.
+      Bug reports and feature requests: open an issue at
+      <a href="https://github.com/jmkorhonen/bg_clasher" target="_blank" rel="noopener">github.com/jmkorhonen/bg_clasher</a>
+      or send the author a scenario export (💾 button) along with steps to reproduce.
     </p>
   </div>
   `;
@@ -8487,7 +8506,7 @@ function init() {
   if (vd) vd.textContent = APP_VERSION;
 }
 
-const APP_VERSION = 'v062';
+const APP_VERSION = 'v063';
 
 function setupPanelResize() {
   const handle = document.getElementById('panelResizeHandle');
