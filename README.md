@@ -6,7 +6,7 @@ real geography. Designed with
 in mind, but the data model is generic enough for most platoon- to
 battalion-level rules.
 
-Current version: **v063** (beta).
+Current version: **v081** (beta).
 
 Project repository: <https://github.com/jmkorhonen/bg_clasher>
 
@@ -18,9 +18,9 @@ Project repository: <https://github.com/jmkorhonen/bg_clasher>
    No install, no server, no accounts. The whole app is a single HTML file.
 3. Use the role switcher (top-left: UMPIRE / BLUFOR / OPFOR) to choose your
    viewpoint. Start as **UMPIRE** to set up a scenario.
-4. Click **Scenario** in the top bar to build an Order of Battle, define unit
-   templates, and configure modifiers. When you're happy, **💾 Export Scenario**
-   to save it to disk.
+4. Click **Scenario** to configure scenario details and rules, then **Units** to
+   build both Orders of Battle and define unit templates. When you're happy,
+   **💾 Export Scenario** to save it to disk.
 5. Place units, plot orders, measure ranges, manage modifiers, end turns.
    Hover the **?** button in the top bar to flash every tooltip in the UI at
    once, or click it to open the full in-app Manual.
@@ -48,24 +48,36 @@ but I need outside eyes on:
 ## Feature tour
 
 ### Scenario building
-- **Two-sided Order of Battle** (BLUFOR / OPFOR) organised as a tree of
+- **Two-sided Order of Battle** in the umpire Units pane, organised as a tree of
   formations and units, with formation abbreviations. Each side can be
   exported and imported independently; individual exports carry only the unit
   templates they reference.
-- **Unit templates** with multiple mutually-exclusive states (e.g. Mounted /
+- **Unit templates** in the umpire Units pane, with multiple mutually-exclusive states (e.g. Mounted /
   Dismounted), each carrying its own stats, movement rates, and range rings
   with per-ring visibility and label toggles. Can be exported and imported
   separately.
 - **Modifier library**: overlays on units that are orthogonal to state. Can be
   booleans (REORG on/off, Dug in) or counters with sequential levels (ATGM
   shots 2→1, Suppressed→Disrupted). Each modifier defines its colour, stack
-  priority, who can add/remove/step it, and whether the opponent can see it.
-  Seven Battlegroup Clash defaults ship with fresh scenarios; there's a
-  "Reset to BGC Defaults" button to get them back.
+  priority, map-badge placement around the unit icon, icon-relative X/Y
+  offsets, who can add/remove/step it, and whether the opponent can see it.
+  A broad starter set ships with fresh scenarios; there's a "Reset to BGC
+  Defaults" button to get them back.
 - **Map symbols** (APP-6 / custom SVG) and **game markers** (objectives,
   IEDs, named areas) with optional range rings.
 - **Icon scale slider** with per-scenario min/max bounds so zoom levels can be
   tuned for different map scales.
+- **Ordered Scenario Layers and Map Layers**. Geodesic hex layers use real-world
+  kilometre diameters, support view or polygon coverage, exact anchor
+  coordinates, flat/point measurement and orientation, zoom-aware line weight,
+  and top-left row,column labels. Players may toggle labels but only the umpire
+  can change grid geometry or styling.
+- **Map-layer controls** for one selectable raster background plus independent,
+  reorderable OpenFreeMap vector categories (water, roads, rail, places,
+  borders, chokepoints, airports, ports, and other reference detail). Map and
+  scenario groups can import GeoJSON; drawing and hex layers can export it.
+- **Scenario map defaults** captured on load or export. Restore them without
+  deleting later-added map layers or changing Scenario Layers.
 - **Side Colours** — configurable BLUFOR/OPFOR colours for order arrows,
   move-order labels, and unit/marker tooltip backgrounds and text.
 - **Order Graphics** — master scale slider for all order-arrow metrics
@@ -79,7 +91,7 @@ but I need outside eyes on:
 ### Map and tools
 - **Leaflet-based** map (OpenStreetMap tiles by default). Zoom freely; icons
   and labels scale proportionally.
-- **Unit placement** via Order of Battle (Deploy) or direct-from-template.
+- **Unit placement** via Order of Battle Deploy controls in the Units pane.
   Units get an APP-6 tactical icon (auto-generated or fetched from a
   GitHub/local icon repo), a designation label at bottom-left, and their
   parent formation's abbreviation at bottom-right.
@@ -94,8 +106,8 @@ but I need outside eyes on:
   Continuous drawing mode stays active after each shape; snap toolbar for
   angle/length constraints. Clicks on unit/marker icons bubble through to
   drawing tools so you can start shapes directly on top of them.
-- **Layers** for drawings, with per-layer owner side, visibility toggle, and
-  edit-rights restriction.
+- **Scenario Layers** for drawings, with per-layer owner side, visibility
+  toggle, edit-rights restriction, ordering, and GeoJSON import/export.
 - **Multiple windows** support via the 🖥️ button: open a mirror window
   (or several) that live-updates with the editor. Each mirror picks its own
   role, pan, zoom, and icon scale — perfect for projecting a player-view
@@ -111,10 +123,11 @@ but I need outside eyes on:
 - Players can also place their own **Suspected enemy** markers —
   player-authored best guesses about where they think enemies are,
   independent of the umpire's detection system.
-- **Game Mode** toggle: enforces a handover screen when switching roles and
-  restricts the Scenario panel to umpire-only. Set optional passwords from
-  Scenario menu if you want to prevent accidents: the umpire password also
-  gates the Game Mode toggle itself.
+- **Game Mode** toggle: enforces a handover screen when switching roles.
+  Players can still open the Scenario pane, but only as read-only reference
+  information. Set optional passwords from Scenario menu if you want to
+  prevent accidents: the umpire password also gates the Game Mode toggle
+  itself.
 
 ### Mount / dismount
 - Any unit can carry any other unit as a passenger. Passengers are hidden
@@ -124,14 +137,15 @@ but I need outside eyes on:
 
 ### Turns and synchronisation
 - **End Turn** snapshots every unit's position, orders, notes, modifier
-  state, and sync matrix; advances the turn counter; optionally auto-saves
-  the scenario as `...T{N}_END_OF_TURN.json`.
+  state, sync matrix, and side orders; advances the turn counter; optionally
+  auto-saves the scenario as `...T{N}_end_of_turn.json`.
 - **Turn History** lets you jump back to any past snapshot (read-only until
   you revert).
-- **Sync Matrix** per side: rows are formations (with abbreviations) and
-  individual units; columns are turns; free-text cells for planned
-  activities — useful for umpire pre-orders adjudication or player sync
-  planning.
+- **Plans** pane per side: the sync matrix rows are formations and
+  individual units, columns are turns, and the row view can collapse to
+  formations plus independent units. Below it, each side has a Markdown
+  plans field that is editable by the umpire and read-only for that player
+  side.
 
 ### Scenario portability
 - **💾 Export Scenario** writes the full state (including all turn history)
@@ -171,8 +185,8 @@ To shake out the most useful feedback in a 1–2 hour session:
    try the Order Graphics scale slider in Scenario → General.
 5. **Try the modifier system** (15 min): toggle REORG on a unit, step the
    ATGM counter on another, mark a unit as Suppressed from the opposing
-   role. Verify the opponent sees only the modifiers flagged
-   visible-to-opponent.
+   role, and adjust one modifier's map-badge placement/offset. Verify the
+   opponent sees only the modifiers flagged visible-to-opponent.
 6. **Open a mirror window** (5 min): click 🖥️, pick a different role in
    the new window, and verify changes in the main window flow through live.
 7. **End a turn** (2 min): with "Save scenario file" checked. Make sure the
@@ -204,7 +218,7 @@ are all welcome too.
 
 ### Architecture
 
-The whole app is a **single self-contained HTML file** (~420 KB for v063).
+The whole app is a **single self-contained HTML file** (~570 KB for v081).
 Opening the file:
 
 - Loads Leaflet 1.9 and Leaflet.Draw from `unpkg.com` CDNs.
@@ -228,10 +242,13 @@ All game state lives in a single top-level `state` object with roughly:
   `diceTemplates` — reusable definitions.
 - `state.units` / `state.markers` — actually-placed entities on the map.
 - `state.movementOrders` — pending per-unit movement orders.
-- `state.layers` / `state.drawings` — arbitrary map drawings organised into
-  layers with visibility and edit-rights flags.
+- `state.layers` / `state.drawings` — scenario drawings organised into layers
+  with visibility and edit-rights flags.
+- `state.mapLayers` / `state.mapBackgroundColor` — ordered raster, vector,
+  GeoJSON, and geodesic hex layers plus the map background colour.
 - `state.turnHistory` — snapshots taken at each End Turn.
-- `state.syncMatrix` — per-side planning matrix contents.
+- `state.syncMatrix` / `sideOrders` — per-side planning matrix contents and
+  Markdown plans text.
 - `state.viewRole` — the current role (umpire / bluefor / opfor).
 - Display-only flags (`showUnitAnchors`, `orderLabelMode`, `gameMode`, etc.)
   that aren't persisted into turn snapshots.
@@ -258,6 +275,16 @@ for an excellent tool for generating the SVG files!
 Icon fetch results are cached in memory for the session. Failed fetches
 surface in a dismissible top bar with a Retry button.
 
+### Graphics testbed
+
+`graphics_testbed.html` is a dev-only single-file editor for tactical graphics.
+It can load SVG or raster images, live-render SVG markup or a small
+`renderGraphic(ctx, api)` JavaScript function, and preview the result both
+directly and as a centered Leaflet `divIcon`. Use its export panel to copy a
+symbol-template JSON object or manifest for import into BG Clasher. Serve it
+from the repo root, for example `python3 -m http.server 8000`, so local sample
+SVGs and Leaflet behave like they do in the main tool.
+
 ### Data migrations
 
 `importScenario()` runs a forward-compatibility pipeline so older saves
@@ -278,6 +305,10 @@ keep working:
 - [Leaflet](https://leafletjs.com/) 1.9 — map rendering and interaction.
 - [Leaflet.Draw](https://github.com/Leaflet/Leaflet.draw) — polyline /
   polygon / circle / marker drawing tools.
+- [milsymbol](https://github.com/spatialillusions/milsymbol) — APP-6 unit
+  symbol generation.
+- [MapLibre GL JS](https://maplibre.org/maplibre-gl-js/docs/) with the
+  Leaflet MapLibre adapter — OpenFreeMap vector reference layers.
 - OpenStreetMap raster tiles (no key).
 - Optional: user's own icon repo (GitHub or local folder).
 
@@ -326,18 +357,19 @@ These are deliberate simplifications for the beta, not bugs:
 
 | Key | Action |
 |---|---|
-| U | Place Unit |
+| U | Open Units pane |
 | K | Place Game Marker |
 | Y | Place Map Symbol |
-| M | Movement order |
+| V | Movement order |
 | L | Polyline |
 | P | Polygon |
 | C | Circle |
-| A | Arrow |
 | T | Text |
-| D | Measure distance |
-| V | Measure angle |
-| E | Edit / delete |
+| M | Measure distance |
+| A | Measure angle |
+| R | Range ring |
+| D | Quick dice roll |
+| Z | Undo last unit/marker move |
 | Esc | Cancel current action / close modal |
 | Enter | Finish current drawing (where applicable) |
 

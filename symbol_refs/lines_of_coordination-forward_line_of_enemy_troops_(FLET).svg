@@ -1,0 +1,236 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg
+   version="1.1"
+   stroke-linecap="round"
+   stroke-linejoin="round"
+   fill-rule="evenodd"
+   width="800"
+   height="800"
+   viewBox="0 0 16000 16000"
+   id="svg20"
+   sodipodi:docname="lines_of_coordination-forward_line_of_enemy_troops_(FLET).svg"
+   inkscape:version="1.4.2 (f4327f4, 2025-05-13)"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns:xlink="http://www.w3.org/1999/xlink"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg"
+   xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+   xmlns:dc="http://purl.org/dc/elements/1.1/">
+  <sodipodi:namedview
+     id="namedview20"
+     pagecolor="#ffffff"
+     bordercolor="#000000"
+     borderopacity="0.25"
+     inkscape:showpageshadow="2"
+     inkscape:pageopacity="0.0"
+     inkscape:pagecheckerboard="0"
+     inkscape:deskcolor="#d1d1d1"
+     inkscape:zoom="1.45875"
+     inkscape:cx="400"
+     inkscape:cy="400"
+     inkscape:window-width="3440"
+     inkscape:window-height="1369"
+     inkscape:window-x="-8"
+     inkscape:window-y="-8"
+     inkscape:window-maximized="1"
+     inkscape:current-layer="g19" />
+  <metadata
+     id="metadata1">
+    <rdf:RDF>
+      <rdf:Description>
+        <dc:description>MSS/MilX-Export to SVG</dc:description>
+        <dc:publisher>gs-soft AG</dc:publisher>
+      </rdf:Description>
+    </rdf:RDF>
+  </metadata>
+  <defs
+     id="defs9">
+    <g
+       id="co0">
+      <use
+         xlink:href="#cp1"
+         id="use1" />
+      <use
+         xlink:href="#cp2"
+         id="use2" />
+    </g>
+    <mask
+       id="co2"
+       maskUnits="userSpaceOnUse"
+       x="0"
+       y="0"
+       width="16000"
+       height="16000">
+      <g
+         id="g4">
+        <use
+           xlink:href="#cp0"
+           fill="white"
+           id="use3" />
+        <use
+           xlink:href="#co0"
+           fill="black"
+           id="use4" />
+      </g>
+    </mask>
+    <g
+       id="co1">
+      <use
+         xlink:href="#cp0"
+         mask="url(#co2)"
+         id="use5" />
+    </g>
+    <mask
+       id="cr0"
+       maskUnits="userSpaceOnUse"
+       x="0"
+       y="0"
+       width="16000"
+       height="16000"
+       fill-rule="nonzero">
+      <use
+         xlink:href="#co1"
+         fill="white"
+         id="use6" />
+    </mask>
+    <mask
+       id="cr1"
+       maskUnits="userSpaceOnUse"
+       x="0"
+       y="0"
+       width="16000"
+       height="16000"
+       fill-rule="nonzero">
+      <use
+         xlink:href="#cp3"
+         fill="white"
+         id="use7" />
+    </mask>
+    <polygon
+       id="cp0"
+       points="0,6640 16000,6640 16000,9360 0,9360"
+       shape-rendering="crispEdges" />
+    <polygon
+       id="cp1"
+       points="53,7653 53,8347 1807,8347 1807,7653"
+       shape-rendering="crispEdges" />
+    <polygon
+       id="cp2"
+       points="14140,7653 14140,8347 15894,8347 15894,7653"
+       shape-rendering="crispEdges" />
+    <polygon
+       id="cp3"
+       points="0,6640 16000,6640 16000,9360 0,9360"
+       shape-rendering="crispEdges" />
+    <style
+       type="text/css"
+       id="style7">.ps0 {fill:none;stroke:rgb(66,160,255);stroke-width:8;}.ts0 {font-family:Arial;font-size:120px;font-weight:bold;fill:rgb(66,160,255);text-anchor:middle;}</style>
+    <g
+       id="gb1">
+      <g
+         transform="matrix(0.0666667 0 0 0.0666667 0.533333 0.533333)"
+         id="g8">
+        <path
+           d="M0,322 C0,144 323,144 323,322"
+           fill-rule="evenodd"
+           class="ps0"
+           id="path7" />
+        <path
+           d="M0,214 C0,36 323,36 323,214"
+           fill-rule="evenodd"
+           class="ps0"
+           id="path8" />
+      </g>
+    </g>
+    <g
+       id="gb2">
+      <g
+         transform="matrix(0.0666667 0 0 0.0666667 0 0)"
+         id="g9">
+        <text
+           x="250"
+           y="150"
+           class="ts0"
+           id="text8">FLET</text>
+      </g>
+    </g>
+  </defs>
+  <g
+     mask="url(#cr0)"
+     id="g18">
+    <g
+       transform="matrix(3.54374 0 0 3.55556 0 6640)"
+       id="g10">
+      <path
+         d="M567,518 C567,340 890,340 890,518"
+         fill-rule="evenodd"
+         class="ps0"
+         id="path9" />
+      <path
+         d="M567,410 C567,232 890,232 890,410"
+         fill-rule="evenodd"
+         class="ps0"
+         id="path10" />
+    </g>
+    <g
+       transform="matrix(53.1561 0 0 53.3333 3253.16 7280)"
+       id="g17">
+      <use
+         xlink:href="#gb1"
+         id="use10" />
+      <use
+         xlink:href="#gb1"
+         x="24"
+         y="0"
+         id="use11" />
+      <use
+         xlink:href="#gb1"
+         x="48"
+         y="0"
+         id="use12" />
+      <use
+         xlink:href="#gb1"
+         x="72"
+         y="0"
+         id="use13" />
+      <use
+         xlink:href="#gb1"
+         x="96"
+         y="0"
+         id="use14" />
+      <use
+         xlink:href="#gb1"
+         x="120"
+         y="0"
+         id="use15" />
+      <use
+         xlink:href="#gb1"
+         x="144"
+         y="0"
+         id="use16" />
+      <use
+         xlink:href="#gb1"
+         x="168"
+         y="0"
+         id="use17" />
+    </g>
+  </g>
+  <g
+     mask="url(#cr1)"
+     id="g20">
+    <g
+       transform="matrix(53.6931 0 0 53.3333 60.2436 7628.44)"
+       id="g19">
+      <use
+         xlink:href="#gb2"
+         id="use18" />
+      <use
+         xlink:href="#gb2"
+         x="262"
+         y="0"
+         id="use19"
+         transform="translate(-9.7031835,0.51413914)" />
+    </g>
+  </g>
+</svg>

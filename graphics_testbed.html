@@ -1,0 +1,1153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BG Clasher Graphics Testbed</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+  :root {
+    --bg: #151820;
+    --panel: #202532;
+    --panel-2: #2a3141;
+    --line: #3b465d;
+    --text: #eef3fb;
+    --muted: #9eabc1;
+    --accent: #61a8ff;
+    --accent-2: #59c39a;
+    --danger: #e36b6b;
+    --mono: Consolas, "Liberation Mono", Menlo, monospace;
+    --sans: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    min-height: 100vh;
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    overflow: hidden;
+  }
+
+  button, input, select, textarea {
+    font: inherit;
+  }
+
+  button {
+    border: 1px solid var(--line);
+    background: var(--panel-2);
+    color: var(--text);
+    border-radius: 4px;
+    padding: 7px 10px;
+    cursor: pointer;
+  }
+
+  button:hover, button.active {
+    border-color: var(--accent);
+    color: #fff;
+  }
+
+  button.primary {
+    background: #235b92;
+    border-color: #3f88cb;
+  }
+
+  button.good {
+    background: #1f654b;
+    border-color: #409b77;
+  }
+
+  input, select, textarea {
+    width: 100%;
+    border: 1px solid var(--line);
+    background: #10141c;
+    color: var(--text);
+    border-radius: 4px;
+  }
+
+  input, select {
+    height: 32px;
+    padding: 5px 7px;
+  }
+
+  textarea {
+    min-height: 0;
+    padding: 10px;
+    resize: none;
+    line-height: 1.35;
+    font-family: var(--mono);
+    font-size: 12px;
+    tab-size: 2;
+  }
+
+  label {
+    display: block;
+    margin-bottom: 4px;
+    font-size: 11px;
+    font-weight: 650;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: .02em;
+  }
+
+  .app {
+    display: grid;
+    grid-template-rows: 46px 1fr;
+    height: 100vh;
+  }
+
+  .topbar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 10px;
+    border-bottom: 1px solid var(--line);
+    background: #111722;
+    min-width: 0;
+  }
+
+  .brand {
+    font-weight: 750;
+    white-space: nowrap;
+    margin-right: 8px;
+  }
+
+  .toolbar-group {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+  }
+
+  .toolbar-spacer { flex: 1; }
+
+  .shell {
+    display: grid;
+    grid-template-columns: minmax(360px, 43vw) 1fr;
+    min-height: 0;
+  }
+
+  .editor-pane, .preview-pane {
+    min-width: 0;
+    min-height: 0;
+    display: grid;
+  }
+
+  .editor-pane {
+    grid-template-rows: auto auto 1fr 162px;
+    border-right: 1px solid var(--line);
+    background: var(--panel);
+  }
+
+  .preview-pane {
+    grid-template-rows: minmax(290px, 48vh) 1fr;
+    background: #171c26;
+  }
+
+  .control-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 8px;
+    padding: 10px;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .control-grid .wide { grid-column: span 2; }
+
+  .context-grid {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 8px;
+    padding: 10px;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .editor-wrap {
+    display: grid;
+    min-height: 0;
+    padding: 10px;
+  }
+
+  .output-pane {
+    display: grid;
+    grid-template-rows: auto 1fr;
+    border-top: 1px solid var(--line);
+    min-height: 0;
+  }
+
+  .output-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 8px 10px 0;
+  }
+
+  .output-head h2 {
+    margin: 0;
+    font-size: 13px;
+  }
+
+  #exportText {
+    margin: 8px 10px 10px;
+    font-size: 11px;
+  }
+
+  .stage {
+    position: relative;
+    min-height: 0;
+    border-bottom: 1px solid var(--line);
+    overflow: hidden;
+    background: #242b38;
+  }
+
+  .stage-inner {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    grid-template-columns: minmax(260px, 42%) 1fr;
+    min-height: 0;
+  }
+
+  .canvas-zone {
+    min-width: 0;
+    min-height: 0;
+    display: grid;
+    grid-template-rows: auto 1fr;
+    border-right: 1px solid rgba(255,255,255,.08);
+  }
+
+  .zone-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 8px 10px;
+    border-bottom: 1px solid rgba(255,255,255,.08);
+    font-size: 12px;
+    color: var(--muted);
+  }
+
+  .swatches {
+    display: flex;
+    gap: 5px;
+    align-items: center;
+  }
+
+  .swatch {
+    width: 22px;
+    height: 22px;
+    border-radius: 3px;
+    border: 1px solid rgba(255,255,255,.35);
+    padding: 0;
+  }
+
+  .plain-preview {
+    position: relative;
+    min-height: 0;
+    overflow: auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 28px;
+  }
+
+  .plain-preview.grid {
+    background-image:
+      linear-gradient(rgba(255,255,255,.12) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,.12) 1px, transparent 1px);
+    background-size: 24px 24px;
+  }
+
+  .plain-preview.mapish {
+    background-color: #d9ddcb;
+    background-image:
+      linear-gradient(28deg, transparent 0 44%, rgba(117,132,84,.35) 45% 48%, transparent 49% 100%),
+      linear-gradient(112deg, transparent 0 42%, rgba(130,150,168,.34) 43% 47%, transparent 48% 100%),
+      linear-gradient(rgba(44,63,45,.14) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(44,63,45,.14) 1px, transparent 1px);
+    background-size: 220px 180px, 260px 230px, 36px 36px, 36px 36px;
+  }
+
+  .plain-preview.dark { background: #10141c; }
+  .plain-preview.light { background: #f2f4f0; }
+
+  .centerlines::before, .centerlines::after {
+    content: "";
+    position: absolute;
+    pointer-events: none;
+    background: rgba(236, 65, 180, .8);
+    z-index: 2;
+  }
+
+  .centerlines::before { left: 50%; top: 0; bottom: 0; width: 1px; }
+  .centerlines::after { top: 50%; left: 0; right: 0; height: 1px; }
+
+  .preview-object {
+    position: relative;
+    line-height: 0;
+    transform-origin: center center;
+    box-shadow: 0 0 0 1px rgba(255,0,255,.8);
+  }
+
+  .map-zone {
+    min-width: 0;
+    min-height: 0;
+    display: grid;
+    grid-template-rows: auto 1fr;
+  }
+
+  #leafletPreview {
+    min-height: 0;
+    background: #d9ddcb;
+  }
+
+  .leaflet-container {
+    font-family: var(--sans);
+  }
+
+  .map-bg {
+    position: absolute;
+    inset: 0;
+    z-index: 200;
+    pointer-events: none;
+    background-image:
+      linear-gradient(rgba(35,58,46,.15) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(35,58,46,.15) 1px, transparent 1px),
+      linear-gradient(35deg, transparent 0 46%, rgba(66,110,73,.23) 47% 49%, transparent 50% 100%),
+      linear-gradient(118deg, transparent 0 42%, rgba(58,112,147,.24) 43% 46%, transparent 47% 100%);
+    background-size: 64px 64px, 64px 64px, 260px 180px, 310px 240px;
+  }
+
+  .details {
+    display: grid;
+    grid-template-columns: minmax(240px, 32%) 1fr;
+    min-height: 0;
+  }
+
+  .metrics {
+    padding: 12px;
+    border-right: 1px solid var(--line);
+    overflow: auto;
+  }
+
+  .metric-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 14px;
+    padding: 5px 0;
+    border-bottom: 1px solid rgba(255,255,255,.07);
+    font-size: 12px;
+  }
+
+  .metric-row span:first-child { color: var(--muted); }
+  .metric-row span:last-child {
+    font-family: var(--mono);
+    text-align: right;
+  }
+
+  .samples {
+    display: grid;
+    grid-template-rows: auto 1fr;
+    min-height: 0;
+  }
+
+  .sample-tabs {
+    display: flex;
+    gap: 6px;
+    padding: 10px;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .sample-tabs button {
+    padding: 5px 8px;
+    font-size: 12px;
+  }
+
+  .sample-list {
+    overflow: auto;
+    padding: 10px;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    align-content: start;
+    gap: 8px;
+  }
+
+  .sample-item {
+    min-height: 84px;
+    border: 1px solid var(--line);
+    background: var(--panel);
+    border-radius: 5px;
+    padding: 8px;
+    display: grid;
+    grid-template-rows: 1fr auto;
+    gap: 6px;
+    cursor: pointer;
+  }
+
+  .sample-icon {
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #f5f5f2;
+    overflow: hidden;
+  }
+
+  .sample-name {
+    font-size: 11px;
+    color: var(--muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .status {
+    font-size: 12px;
+    color: var(--muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .status.error { color: var(--danger); }
+  .status.ok { color: var(--accent-2); }
+
+  .small-btn {
+    padding: 5px 8px;
+    font-size: 12px;
+  }
+
+  #sandbox {
+    display: none;
+  }
+
+  @media (max-width: 920px) {
+    body { overflow: auto; }
+    .app { min-height: 100vh; height: auto; }
+    .shell { grid-template-columns: 1fr; }
+    .editor-pane { min-height: 720px; border-right: 0; border-bottom: 1px solid var(--line); }
+    .preview-pane { min-height: 760px; }
+    .stage-inner { grid-template-columns: 1fr; }
+    .canvas-zone { border-right: 0; border-bottom: 1px solid rgba(255,255,255,.08); }
+    .context-grid, .control-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .details { grid-template-columns: 1fr; }
+    .metrics { border-right: 0; border-bottom: 1px solid var(--line); }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="topbar">
+    <div class="brand">BG Clasher Graphics Testbed</div>
+    <div class="toolbar-group">
+      <button id="runBtn" class="primary">Run</button>
+      <button id="sampleBtn">Samples</button>
+      <button id="copySvgBtn" class="good">Copy SVG</button>
+      <button id="copyJsonBtn">Copy Symbol JSON</button>
+      <button id="downloadBtn">Download SVG</button>
+    </div>
+    <div class="toolbar-spacer"></div>
+    <div id="status" class="status">Ready</div>
+  </header>
+
+  <main class="shell">
+    <section class="editor-pane">
+      <div class="control-grid">
+        <div>
+          <label for="mode">Mode</label>
+          <select id="mode">
+            <option value="svg">SVG Markup</option>
+            <option value="js">JS Renderer</option>
+            <option value="json">Symbol JSON</option>
+          </select>
+        </div>
+        <div>
+          <label for="fileInput">Load File</label>
+          <input id="fileInput" type="file" accept=".svg,image/svg+xml,image/png,image/jpeg,image/webp">
+        </div>
+        <div>
+          <label for="symbolId">Symbol ID</label>
+          <input id="symbolId" value="s_testbed_custom">
+        </div>
+        <div>
+          <label for="symbolName">Name</label>
+          <input id="symbolName" value="Testbed Custom">
+        </div>
+      </div>
+
+      <div class="context-grid">
+        <div>
+          <label for="side">Side</label>
+          <select id="side">
+            <option value="bluefor">bluefor</option>
+            <option value="opfor">opfor</option>
+            <option value="neutral">neutral</option>
+          </select>
+        </div>
+        <div>
+          <label for="type">Type</label>
+          <select id="type">
+            <option value="infantry">infantry</option>
+            <option value="infantry_mech">infantry_mech</option>
+            <option value="armor">armor</option>
+            <option value="artillery">artillery</option>
+            <option value="recon">recon</option>
+            <option value="uav">uav</option>
+            <option value="other">other</option>
+          </select>
+        </div>
+        <div>
+          <label for="echelon">Echelon</label>
+          <select id="echelon">
+            <option value="team">team</option>
+            <option value="squad">squad</option>
+            <option value="platoon" selected>platoon</option>
+            <option value="company">company</option>
+            <option value="battalion">battalion</option>
+            <option value="brigade">brigade</option>
+            <option value="unspecified">unspecified</option>
+          </select>
+        </div>
+        <div>
+          <label for="label">Label</label>
+          <input id="label" value="A1">
+        </div>
+        <div>
+          <label for="color">Color</label>
+          <input id="color" type="color" value="#4a90d9">
+        </div>
+      </div>
+
+      <div class="editor-wrap">
+        <textarea id="editor" spellcheck="false"></textarea>
+      </div>
+
+      <div class="output-pane">
+        <div class="output-head">
+          <h2>Export</h2>
+          <div class="toolbar-group">
+            <button id="copyManifestBtn" class="small-btn">Copy Manifest</button>
+            <button id="copyJsBtn" class="small-btn">Copy JS</button>
+          </div>
+        </div>
+        <textarea id="exportText" spellcheck="false" readonly></textarea>
+      </div>
+    </section>
+
+    <section class="preview-pane">
+      <div class="stage">
+        <div class="stage-inner">
+          <div class="canvas-zone">
+            <div class="zone-head">
+              <span>Direct Preview</span>
+              <div class="swatches">
+                <button class="swatch active" data-bg="mapish" title="Map background" style="background:#d9ddcb"></button>
+                <button class="swatch" data-bg="light" title="Light background" style="background:#f2f4f0"></button>
+                <button class="swatch" data-bg="dark" title="Dark background" style="background:#10141c"></button>
+                <button class="swatch" data-bg="grid" title="Grid background" style="background:#293242"></button>
+              </div>
+            </div>
+            <div id="plainPreview" class="plain-preview mapish centerlines"></div>
+          </div>
+
+          <div class="map-zone">
+            <div class="zone-head">
+              <span>Leaflet Marker Preview</span>
+              <div class="toolbar-group">
+                <button id="minusScale" class="small-btn">-</button>
+                <input id="scale" type="range" min="0.2" max="3" step="0.05" value="1" style="width:140px">
+                <button id="plusScale" class="small-btn">+</button>
+                <input id="rotation" type="range" min="0" max="359" step="1" value="0" style="width:140px">
+              </div>
+            </div>
+            <div id="leafletPreview"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="details">
+        <aside class="metrics">
+          <div class="metric-row"><span>Width</span><span id="mWidth">-</span></div>
+          <div class="metric-row"><span>Height</span><span id="mHeight">-</span></div>
+          <div class="metric-row"><span>ViewBox</span><span id="mViewBox">-</span></div>
+          <div class="metric-row"><span>Anchor</span><span id="mAnchor">-</span></div>
+          <div class="metric-row"><span>Scale</span><span id="mScale">1.00</span></div>
+          <div class="metric-row"><span>Rotation</span><span id="mRotation">0 deg</span></div>
+          <div class="metric-row"><span>Output</span><span id="mOutput">-</span></div>
+        </aside>
+
+        <section class="samples">
+          <div class="sample-tabs">
+            <button class="active" data-sample-tab="builtins">Built-ins</button>
+            <button data-sample-tab="icons">Local Icons</button>
+            <button data-sample-tab="refs">Symbol Refs</button>
+          </div>
+          <div id="sampleList" class="sample-list"></div>
+        </section>
+      </div>
+    </section>
+  </main>
+</div>
+
+<iframe id="sandbox" sandbox="allow-scripts"></iframe>
+
+<script>
+const SAMPLE_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="32" height="24" viewBox="0 0 32 24">
+  <rect x="3" y="4" width="26" height="16" fill="#fff" stroke="#000" stroke-width="2"/>
+  <path d="M8 17 C 10 10, 22 10, 24 17" fill="none" stroke="#000" stroke-width="2"/>
+  <text x="16" y="13" text-anchor="middle" font-family="Arial" font-size="7" font-weight="700" fill="#000">BP</text>
+</svg>`;
+
+const SAMPLE_JS = `function renderGraphic(ctx, api) {
+  const fill = ctx.side === 'opfor' ? '#d94a4a' : ctx.side === 'bluefor' ? '#4a90d9' : '#f2f2f2';
+  const text = api.esc(ctx.label || 'A1');
+  return \`<svg xmlns="http://www.w3.org/2000/svg" width="54" height="46" viewBox="0 0 54 46">
+    <rect x="3" y="8" width="48" height="30" rx="0" fill="\${fill}" stroke="#000" stroke-width="2"/>
+    <path d="M15 17 L39 29 M39 17 L15 29" stroke="#000" stroke-width="2.5"/>
+    <text x="27" y="35" text-anchor="middle" font-family="Arial" font-size="8" font-weight="700" fill="#000">\${text}</text>
+  </svg>\`;
+}`;
+
+const BUILTIN_SAMPLES = [
+  {
+    name: 'Battle position',
+    mode: 'svg',
+    source: SAMPLE_SVG
+  },
+  {
+    name: 'SVG symbol JSON',
+    mode: 'json',
+    source: JSON.stringify({
+      id: 's_testbed_bridge',
+      name: 'Bridge',
+      category: 'terrain',
+      svg: '<svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 28 28"><circle cx="14" cy="14" r="10" fill="#fff" stroke="#000" stroke-width="2"/><line x1="6" y1="11" x2="22" y2="11" stroke="#000" stroke-width="2"/><line x1="6" y1="17" x2="22" y2="17" stroke="#000" stroke-width="2"/></svg>'
+    }, null, 2)
+  },
+  {
+    name: 'JS renderer',
+    mode: 'js',
+    source: SAMPLE_JS
+  }
+];
+
+const LOCAL_ICON_SAMPLES = [
+  'BLUFOR_Infantry_Platoon.svg',
+  'BLUFOR_Mechanised_Infantry_Company.svg',
+  'BLUFOR_Armour_Platoon.svg',
+  'OPFOR_Infantry_Platoon.svg',
+  'OPFOR_Armour_Company.svg',
+  'SUSPECTED_OPFOR_Question_mark_Unspecified.svg'
+];
+
+const SYMBOL_REF_SAMPLES = [
+  'base_deployments-objective_1.svg',
+  'base_deployments-assembly_area_X-ray.svg',
+  'command_points-checkpoint.svg',
+  'lines_of_coordination-phase_line_axe.svg',
+  'tasks-block.svg',
+  'obstacles-concertina_single.svg'
+];
+
+let map;
+let mapMarker;
+let mapCenterCross;
+let renderSeq = 0;
+let currentSvg = '';
+let currentMetrics = null;
+let currentSampleTab = 'builtins';
+
+const els = {
+  mode: document.getElementById('mode'),
+  fileInput: document.getElementById('fileInput'),
+  editor: document.getElementById('editor'),
+  status: document.getElementById('status'),
+  plainPreview: document.getElementById('plainPreview'),
+  exportText: document.getElementById('exportText'),
+  symbolId: document.getElementById('symbolId'),
+  symbolName: document.getElementById('symbolName'),
+  side: document.getElementById('side'),
+  type: document.getElementById('type'),
+  echelon: document.getElementById('echelon'),
+  label: document.getElementById('label'),
+  color: document.getElementById('color'),
+  scale: document.getElementById('scale'),
+  rotation: document.getElementById('rotation'),
+  sampleList: document.getElementById('sampleList'),
+  sandbox: document.getElementById('sandbox')
+};
+
+function init() {
+  els.editor.value = SAMPLE_SVG;
+  setupSandbox();
+  setupEvents();
+  setupMap();
+  renderSampleList();
+  scheduleRender();
+}
+
+function setupSandbox() {
+  els.sandbox.srcdoc = `<!DOCTYPE html><html><body><script>
+    function esc(value) {
+      return String(value == null ? '' : value)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+    function num(value, fallback) {
+      const n = Number(value);
+      return Number.isFinite(n) ? n : fallback;
+    }
+    const api = { esc, num };
+    window.addEventListener('message', event => {
+      const msg = event.data || {};
+      if (msg.type !== 'render-js') return;
+      try {
+        const runner = new Function('ctx', 'api', '"use strict";\\n' + msg.code + '\\nif (typeof renderGraphic === "function") return renderGraphic(ctx, api);\\nif (typeof renderSymbol === "function") return renderSymbol(ctx, api);\\nthrow new Error("Define renderGraphic(ctx, api) or renderSymbol(ctx, api).");');
+        const svg = runner(msg.ctx, api);
+        if (typeof svg !== 'string') throw new Error('Renderer returned ' + typeof svg + ', expected string.');
+        parent.postMessage({ type: 'rendered-js', seq: msg.seq, svg }, '*');
+      } catch (err) {
+        parent.postMessage({ type: 'rendered-js-error', seq: msg.seq, error: err.message || String(err) }, '*');
+      }
+    });
+  <\/script></body></html>`;
+}
+
+function setupEvents() {
+  document.getElementById('runBtn').addEventListener('click', renderNow);
+  document.getElementById('sampleBtn').addEventListener('click', () => {
+    currentSampleTab = 'builtins';
+    setActiveSampleTab();
+    renderSampleList();
+  });
+  document.getElementById('copySvgBtn').addEventListener('click', () => copyText(currentSvg, 'SVG copied'));
+  document.getElementById('copyJsonBtn').addEventListener('click', () => copyText(exportSymbolJson(), 'Symbol JSON copied'));
+  document.getElementById('copyManifestBtn').addEventListener('click', () => copyText(exportManifestJson(), 'Manifest copied'));
+  document.getElementById('copyJsBtn').addEventListener('click', () => copyText(els.editor.value, 'Editor code copied'));
+  document.getElementById('downloadBtn').addEventListener('click', downloadSvg);
+  document.getElementById('minusScale').addEventListener('click', () => bumpScale(-0.1));
+  document.getElementById('plusScale').addEventListener('click', () => bumpScale(0.1));
+
+  [
+    els.mode, els.symbolId, els.symbolName, els.side, els.type, els.echelon,
+    els.label, els.color, els.scale, els.rotation
+  ].forEach(el => el.addEventListener('input', scheduleRender));
+  els.editor.addEventListener('input', scheduleRender);
+
+  els.fileInput.addEventListener('change', handleFileLoad);
+  document.querySelectorAll('.swatch').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.swatch').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      els.plainPreview.className = 'plain-preview centerlines ' + btn.dataset.bg;
+    });
+  });
+  document.querySelectorAll('[data-sample-tab]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      currentSampleTab = btn.dataset.sampleTab;
+      setActiveSampleTab();
+      renderSampleList();
+    });
+  });
+  window.addEventListener('message', handleSandboxMessage);
+}
+
+function setupMap() {
+  if (!window.L) {
+    const target = document.getElementById('leafletPreview');
+    target.innerHTML = '<div style="height:100%;display:flex;align-items:center;justify-content:center;color:#9eabc1;font-size:13px">Leaflet unavailable</div>';
+    setStatus('Leaflet unavailable; direct preview still works', 'error');
+    return;
+  }
+  map = L.map('leafletPreview', {
+    crs: L.CRS.Simple,
+    minZoom: -2,
+    maxZoom: 2,
+    zoomControl: true,
+    attributionControl: false
+  });
+  const bounds = [[-180, -240], [180, 240]];
+  L.rectangle(bounds, { color: 'transparent', fillOpacity: 0 }).addTo(map);
+  map.fitBounds(bounds);
+  const bg = document.createElement('div');
+  bg.className = 'map-bg';
+  map.getContainer().appendChild(bg);
+  mapCenterCross = L.marker([0, 0], {
+    icon: L.divIcon({
+      className: '',
+      html: '<svg width="32" height="32" viewBox="0 0 32 32"><line x1="0" y1="16" x2="32" y2="16" stroke="#ff00ff" stroke-width="2"/><line x1="16" y1="0" x2="16" y2="32" stroke="#ff00ff" stroke-width="2"/><circle cx="16" cy="16" r="3" fill="#ff00ff"/></svg>',
+      iconSize: [32, 32],
+      iconAnchor: [16, 16]
+    }),
+    interactive: false,
+    zIndexOffset: 900
+  }).addTo(map);
+}
+
+let renderTimer = null;
+function scheduleRender() {
+  clearTimeout(renderTimer);
+  renderTimer = setTimeout(renderNow, 120);
+}
+
+function renderNow() {
+  setStatus('Rendering...', '');
+  const mode = els.mode.value;
+  if (mode === 'js') {
+    renderSeq++;
+    els.sandbox.contentWindow.postMessage({
+      type: 'render-js',
+      seq: renderSeq,
+      code: els.editor.value,
+      ctx: contextFromControls()
+    }, '*');
+    return;
+  }
+
+  try {
+    const svg = mode === 'json' ? svgFromJson(els.editor.value) : els.editor.value;
+    applySvg(svg);
+  } catch (err) {
+    showError(err.message || String(err));
+  }
+}
+
+function handleSandboxMessage(event) {
+  const msg = event.data || {};
+  if (msg.seq !== renderSeq) return;
+  if (msg.type === 'rendered-js-error') {
+    showError(msg.error);
+    return;
+  }
+  if (msg.type === 'rendered-js') {
+    try {
+      applySvg(msg.svg);
+    } catch (err) {
+      showError(err.message || String(err));
+    }
+  }
+}
+
+function contextFromControls() {
+  return {
+    side: els.side.value,
+    type: els.type.value,
+    echelon: els.echelon.value,
+    label: els.label.value,
+    color: els.color.value,
+    scale: Number(els.scale.value),
+    rotation: Number(els.rotation.value),
+    symbolId: els.symbolId.value,
+    symbolName: els.symbolName.value
+  };
+}
+
+function applySvg(svg) {
+  const sanitized = sanitizeSvg(svg);
+  const metrics = measureSvg(sanitized);
+  currentSvg = sanitized;
+  currentMetrics = metrics;
+  renderDirectPreview(sanitized, metrics);
+  renderLeafletPreview(sanitized, metrics);
+  renderMetrics(metrics);
+  renderExport();
+  setStatus('Rendered', 'ok');
+}
+
+function sanitizeSvg(svg) {
+  if (!/<svg[\s>]/i.test(svg)) throw new Error('No <svg> element found.');
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(svg, 'image/svg+xml');
+  const parseError = doc.querySelector('parsererror');
+  if (parseError) throw new Error('SVG parse error.');
+  const root = doc.documentElement;
+  if (!root || root.nodeName.toLowerCase() !== 'svg') throw new Error('Root element must be <svg>.');
+  root.querySelectorAll('script').forEach(n => n.remove());
+  root.querySelectorAll('*').forEach(node => {
+    Array.from(node.attributes).forEach(attr => {
+      const name = attr.name.toLowerCase();
+      const value = attr.value.trim().toLowerCase();
+      if (name.startsWith('on')) node.removeAttribute(attr.name);
+      if ((name === 'href' || name.endsWith(':href')) && value.startsWith('javascript:')) {
+        node.removeAttribute(attr.name);
+      }
+    });
+  });
+  if (!root.getAttribute('xmlns')) root.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+  return new XMLSerializer().serializeToString(root);
+}
+
+function measureSvg(svg) {
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(svg, 'image/svg+xml');
+  const root = doc.documentElement;
+  const widthRaw = root.getAttribute('width');
+  const heightRaw = root.getAttribute('height');
+  const viewBoxRaw = root.getAttribute('viewBox');
+  const viewBox = parseViewBox(viewBoxRaw);
+  const width = parseSvgLength(widthRaw) || (viewBox ? viewBox[2] : 32);
+  const height = parseSvgLength(heightRaw) || (viewBox ? viewBox[3] : 32);
+  return {
+    width,
+    height,
+    viewBox: viewBoxRaw || `0 0 ${width} ${height}`,
+    anchorX: width / 2,
+    anchorY: height / 2
+  };
+}
+
+function parseSvgLength(value) {
+  if (!value) return null;
+  const match = String(value).match(/^([0-9.]+)/);
+  return match ? Number(match[1]) : null;
+}
+
+function parseViewBox(value) {
+  if (!value) return null;
+  const nums = String(value).trim().split(/[\s,]+/).map(Number);
+  return nums.length === 4 && nums.every(Number.isFinite) ? nums : null;
+}
+
+function renderDirectPreview(svg, metrics) {
+  const scale = Number(els.scale.value);
+  const rotation = Number(els.rotation.value);
+  els.plainPreview.innerHTML = '';
+  const obj = document.createElement('div');
+  obj.className = 'preview-object';
+  obj.style.width = metrics.width + 'px';
+  obj.style.height = metrics.height + 'px';
+  obj.style.transform = `scale(${scale}) rotate(${rotation}deg)`;
+  obj.innerHTML = svg;
+  els.plainPreview.appendChild(obj);
+}
+
+function renderLeafletPreview(svg, metrics) {
+  if (!map || !window.L) return;
+  const scale = Number(els.scale.value);
+  const rotation = Number(els.rotation.value);
+  const w = Math.max(1, Math.round(metrics.width * scale));
+  const h = Math.max(1, Math.round(metrics.height * scale));
+  const html = `<div style="width:${w}px;height:${h}px;transform:rotate(${rotation}deg);transform-origin:center;line-height:0">${resizeSvg(svg, w, h)}</div>`;
+  const icon = L.divIcon({
+    className: '',
+    html,
+    iconSize: [w, h],
+    iconAnchor: [w / 2, h / 2]
+  });
+  if (mapMarker) map.removeLayer(mapMarker);
+  mapMarker = L.marker([0, 0], {
+    icon,
+    draggable: true,
+    zIndexOffset: 500,
+    bubblingMouseEvents: true
+  }).addTo(map);
+}
+
+function resizeSvg(svg, width, height) {
+  return svg.replace(/<svg([^>]*)>/i, (match, attrs) => {
+    const cleaned = attrs.replace(/\s(width|height)="[^"]*"/gi, '');
+    return `<svg${cleaned} width="${width}" height="${height}" preserveAspectRatio="xMidYMid meet">`;
+  });
+}
+
+function renderMetrics(metrics) {
+  const scale = Number(els.scale.value);
+  const rotation = Number(els.rotation.value);
+  document.getElementById('mWidth').textContent = fmt(metrics.width) + ' px';
+  document.getElementById('mHeight').textContent = fmt(metrics.height) + ' px';
+  document.getElementById('mViewBox').textContent = metrics.viewBox;
+  document.getElementById('mAnchor').textContent = fmt(metrics.anchorX) + ', ' + fmt(metrics.anchorY);
+  document.getElementById('mScale').textContent = scale.toFixed(2);
+  document.getElementById('mRotation').textContent = rotation.toFixed(0) + ' deg';
+  document.getElementById('mOutput').textContent = currentSvg.length + ' chars';
+}
+
+function renderExport() {
+  els.exportText.value = exportSymbolJson();
+}
+
+function exportSymbolJson() {
+  return JSON.stringify({
+    id: safeId(els.symbolId.value || 's_testbed_custom'),
+    name: els.symbolName.value || 'Testbed Custom',
+    category: 'imported',
+    svg: currentSvg
+  }, null, 2);
+}
+
+function exportManifestJson() {
+  return JSON.stringify({ symbols: [JSON.parse(exportSymbolJson())] }, null, 2);
+}
+
+function svgFromJson(text) {
+  const parsed = JSON.parse(text);
+  let symbol = parsed;
+  if (parsed.symbols && Array.isArray(parsed.symbols)) symbol = parsed.symbols[0];
+  if (!symbol || typeof symbol.svg !== 'string') throw new Error('JSON must contain an svg string.');
+  if (symbol.id) els.symbolId.value = symbol.id;
+  if (symbol.name) els.symbolName.value = symbol.name;
+  return symbol.svg;
+}
+
+function safeId(value) {
+  return String(value).trim().replace(/[^a-zA-Z0-9_:-]+/g, '_') || 's_testbed_custom';
+}
+
+function fmt(value) {
+  return Number(value).toFixed(value % 1 === 0 ? 0 : 1);
+}
+
+function setStatus(text, kind) {
+  els.status.textContent = text;
+  els.status.className = 'status' + (kind ? ' ' + kind : '');
+}
+
+function showError(message) {
+  currentSvg = '';
+  currentMetrics = null;
+  els.plainPreview.innerHTML = '';
+  if (map && mapMarker) {
+    map.removeLayer(mapMarker);
+    mapMarker = null;
+  }
+  document.getElementById('mOutput').textContent = 'error';
+  setStatus(message, 'error');
+}
+
+async function copyText(text, success) {
+  if (!text) {
+    setStatus('Nothing to copy', 'error');
+    return;
+  }
+  try {
+    await navigator.clipboard.writeText(text);
+    setStatus(success, 'ok');
+  } catch (err) {
+    els.exportText.value = text;
+    els.exportText.select();
+    setStatus('Clipboard blocked; export text selected', 'error');
+  }
+}
+
+function downloadSvg() {
+  if (!currentSvg) return;
+  const blob = new Blob([currentSvg], { type: 'image/svg+xml' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = safeId(els.symbolId.value || 'bg_clasher_symbol') + '.svg';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
+function bumpScale(delta) {
+  const next = Math.min(3, Math.max(0.2, Number(els.scale.value) + delta));
+  els.scale.value = next.toFixed(2);
+  scheduleRender();
+}
+
+function handleFileLoad() {
+  const file = els.fileInput.files && els.fileInput.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    const result = reader.result;
+    if (/svg/i.test(file.type) || /\.svg$/i.test(file.name)) {
+      els.mode.value = 'svg';
+      els.editor.value = String(result);
+      els.symbolName.value = file.name.replace(/\.svg$/i, '').replace(/[_-]+/g, ' ');
+      els.symbolId.value = 's_' + file.name.replace(/\.[^.]+$/, '').replace(/[^a-zA-Z0-9_:-]+/g, '_');
+      scheduleRender();
+      return;
+    }
+    const img = new Image();
+    img.onload = () => {
+      els.mode.value = 'svg';
+      els.symbolName.value = file.name.replace(/\.[^.]+$/, '').replace(/[_-]+/g, ' ');
+      els.symbolId.value = 's_' + file.name.replace(/\.[^.]+$/, '').replace(/[^a-zA-Z0-9_:-]+/g, '_');
+      els.editor.value = `<svg xmlns="http://www.w3.org/2000/svg" width="${img.naturalWidth}" height="${img.naturalHeight}" viewBox="0 0 ${img.naturalWidth} ${img.naturalHeight}">
+  <image href="${result}" width="${img.naturalWidth}" height="${img.naturalHeight}"/>
+</svg>`;
+      scheduleRender();
+    };
+    img.onerror = () => showError('Could not load image.');
+    img.src = result;
+  };
+  if (/svg/i.test(file.type) || /\.svg$/i.test(file.name)) reader.readAsText(file);
+  else reader.readAsDataURL(file);
+}
+
+function renderSampleList() {
+  els.sampleList.innerHTML = '';
+  if (currentSampleTab === 'builtins') {
+    BUILTIN_SAMPLES.forEach(sample => {
+      els.sampleList.appendChild(sampleCard(sample.name, '', () => {
+        els.mode.value = sample.mode;
+        els.editor.value = sample.source;
+        scheduleRender();
+      }));
+    });
+    return;
+  }
+  const base = currentSampleTab === 'icons' ? 'icons/' : 'symbol_refs/';
+  const files = currentSampleTab === 'icons' ? LOCAL_ICON_SAMPLES : SYMBOL_REF_SAMPLES;
+  files.forEach(file => {
+    els.sampleList.appendChild(sampleCard(file, base + file, async () => {
+      try {
+        const response = await fetch(base + encodeURIComponent(file).replace(/%2F/g, '/'));
+        if (!response.ok) throw new Error(response.status + ' ' + response.statusText);
+        els.mode.value = 'svg';
+        els.editor.value = await response.text();
+        els.symbolName.value = file.replace(/\.svg$/i, '').replace(/[_-]+/g, ' ');
+        els.symbolId.value = 's_' + file.replace(/\.svg$/i, '').replace(/[^a-zA-Z0-9_:-]+/g, '_');
+        scheduleRender();
+      } catch (err) {
+        showError('Sample load failed: ' + (err.message || err));
+      }
+    }));
+  });
+}
+
+function sampleCard(name, imgSrc, onClick) {
+  const item = document.createElement('button');
+  item.className = 'sample-item';
+  item.type = 'button';
+  const icon = document.createElement('div');
+  icon.className = 'sample-icon';
+  if (imgSrc) {
+    const img = document.createElement('img');
+    img.src = imgSrc;
+    img.alt = '';
+    img.style.maxWidth = '72px';
+    img.style.maxHeight = '52px';
+    icon.appendChild(img);
+  } else {
+    icon.innerHTML = '<span style="color:#111;font-family:Consolas,monospace;font-size:12px">sample</span>';
+  }
+  const label = document.createElement('div');
+  label.className = 'sample-name';
+  label.textContent = name;
+  item.appendChild(icon);
+  item.appendChild(label);
+  item.addEventListener('click', onClick);
+  return item;
+}
+
+function setActiveSampleTab() {
+  document.querySelectorAll('[data-sample-tab]').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.sampleTab === currentSampleTab);
+  });
+}
+
+init();
+</script>
+</body>
+</html>

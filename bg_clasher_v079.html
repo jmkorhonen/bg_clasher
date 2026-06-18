@@ -158,24 +158,8 @@
 
   .unit-scale-icon-large {
     width: auto;
-    height: 17px;
+    height: 18px;
     object-fit: contain;
-  }
-
-  #mapZoomButtons {
-    position: absolute;
-    z-index: 1000;
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-  }
-  #mapZoomButtons button {
-    width: 100%;
-    height: 34px;
-    padding: 0;
-    font-size: 21px;
-    font-weight: 700;
-    line-height: 1;
   }
 
   #mapCenterCrosshair {
@@ -1093,8 +1077,9 @@
   <button class="editor-only" data-panel-button="scenario" onclick="openPanel('scenario')" id="scenarioBtn">Scenario</button>
   <button class="editor-only" data-panel-button="sync" onclick="openPanel('sync')">Plans</button>
   <button class="editor-only" data-panel-button="units" onclick="openPanel('units')">Units</button>
-  <button data-panel-button="layers" onclick="openPanel('layers')">Map Layers</button>
+  <button data-panel-button="layers" onclick="openPanel('layers')">Layers</button>
   <button class="editor-only" data-panel-button="markers" onclick="openPanel('markers')">Game Markers</button>
+  <button data-panel-button="log" onclick="openPanel('log')">Log</button>
   <button class="editor-only" data-panel-button="turns" onclick="openPanel('turns')">Turns</button>
   <button data-panel-button="help" onclick="openPanel('help')" onmouseenter="showAllTooltips()" onmouseleave="hideAllTooltips()" title="Open manual · hover to reveal all button tooltips">?</button>
   <button class="editor-only" onclick="endTurn()" style="background: var(--accent)">End Turn</button>
@@ -1108,11 +1093,13 @@
 <div id="toolbar">
   <button title="Select / Pan (Esc)" onclick="setTool('pan')" id="tool-pan" class="active"><svg width="14" height="18" viewBox="0 0 14 18" style="fill:currentColor"><path d="M1,1 L1,15 L5,11 L9,17 L11,16 L7,10 L12,10 Z"/></svg></button>
   <div class="group-sep"></div>
+  <button title="Place Unit (U)" onclick="setTool('unit')" id="tool-unit">□</button>
+  <div class="group-sep"></div>
   <button title="Place Game Marker (K)" onclick="setTool('marker')" id="tool-marker">◆</button>
   <button title="Place Map Symbol (Y)" onclick="setTool('symbol')" id="tool-symbol">⬢</button>
   <div class="group-sep"></div>
   <button title="Draw Line (L)" onclick="setTool('line')" id="tool-line">╱</button>
-  <button title="Draw Polygon (P)" onclick="setTool('poly')" id="tool-poly"><svg width="19" height="19" viewBox="0 0 19 19" aria-hidden="true"><polygon points="2,13 5,3 13,1 17,7 14,16 6,17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg></button>
+  <button title="Draw Polygon (P)" onclick="setTool('poly')" id="tool-poly">⬡</button>
   <button title="Draw Circle (C)" onclick="setTool('circle')" id="tool-circle">○</button>
   <button title="Add Text (T)" onclick="setTool('text')" id="tool-text">T</button>
   <div class="group-sep"></div>
@@ -1157,11 +1144,6 @@
   <span id="moveUndoText">Unit moved</span>
   <button onclick="undoLastMove()">Undo</button>
   <button class="ghost small" onclick="hideMoveUndo()">×</button>
-</div>
-
-<div id="mapZoomButtons" aria-label="Map zoom controls">
-  <button onclick="zoomMapBy(1)" title="Zoom in">+</button>
-  <button onclick="zoomMapBy(-1)" title="Zoom out">−</button>
 </div>
 <div id="infoToast"></div>
 
@@ -1285,7 +1267,7 @@ function updateWeatherDisplay() {
 // STATE
 // ═══════════════════════════════════════════════════════════════════
 const state = {
-  version: 11,
+  version: 10,
   scenario: {
     name: 'New Scenario',
     description: '',
@@ -1353,8 +1335,6 @@ const state = {
   oob: { bluefor: [], opfor: [] }, // each entry: {id, type:'formation'|'unit', name, side, children:[], ...unit fields, deployed, unitId}
   // Game objects
   layers: [],
-  mapLayers: [],
-  mapBackgroundColor: '#d9dde3',
   units: [],
   markers: [],
   drawings: [],
@@ -1685,21 +1665,8 @@ map.getContainer().appendChild(mapCenterCrosshair);
 map.on('dragstart', () => mapCenterCrosshair.classList.add('visible'));
 map.on('dragend', () => mapCenterCrosshair.classList.remove('visible'));
 
+L.control.zoom({ position: 'bottomright' }).addTo(map);
 L.control.scale({ position: 'bottomleft', metric: true, imperial: false, maxWidth: 120 }).addTo(map);
-
-function zoomMapBy(delta) { if (delta > 0) map.zoomIn(); else map.zoomOut(); }
-
-function positionMapZoomButtons() {
-  const toolbar = document.getElementById('toolbar');
-  const controls = document.getElementById('mapZoomButtons');
-  if (!toolbar || !controls) return;
-  const rect = toolbar.getBoundingClientRect();
-  controls.style.left = rect.left + 'px';
-  controls.style.top = (rect.bottom + 4) + 'px';
-  controls.style.width = rect.width + 'px';
-}
-window.addEventListener('resize', positionMapZoomButtons);
-requestAnimationFrame(positionMapZoomButtons);
 
 // Custom vertical scale
 const VerticalScale = L.Control.extend({
@@ -1784,60 +1751,20 @@ const OPENFREE_GROUPS = [
   { id: 'other', name: 'Other map detail' }
 ];
 
-const OPENFREE_DEFAULT_COLORS = {
-  base: '#d9d7c5', water: '#79b7d3', roads: '#f2f0e8', rail: '#d94a4a',
-  places: '#303030', borders: '#8b5fbf', chokepoints: '#00bcd4',
-  transport: '#d6a400', other: '#7a7a7a'
+const mapDisplay = {
+  baseMap: 'voyager',
+  vectorEnabled: false,
+  vectorOpacity: 0.85,
+  referenceGroups: Object.fromEntries(OPENFREE_GROUPS.map(group => [group.id, true]))
 };
 
-function defaultMapLayers() {
-  const vectorOrder = ['places','roads','rail','borders','chokepoints','transport','water','base','other'];
-  return [
-    ...vectorOrder.map(id => {
-      const group = OPENFREE_GROUPS.find(item => item.id === id);
-      return {
-        id: 'map_vector_' + id, type: 'vector', group: id,
-        name: group?.name || id, visible: false, opacity: 1,
-        color: OPENFREE_DEFAULT_COLORS[id] || '#777777'
-      };
-    }),
-    { id: 'map_raster', type: 'raster', name: 'Raster map', visible: true, opacity: 1, baseMap: 'voyager' }
-  ];
-}
-
-const vectorLayerRuntime = new Map();
-const geoJsonLayerRuntime = new Map();
-let scenarioMapLayerDefaults = null;
-
-function getMapLayer(id) { return (state.mapLayers || []).find(layer => layer.id === id); }
-function mapLayerPaneName(layerOrId) {
-  const id = typeof layerOrId === 'string' ? layerOrId : layerOrId?.id;
-  return 'map-data-' + String(id || 'none').replace(/[^a-zA-Z0-9_-]/g, '-');
-}
-
-function ensureMapLayerModel() {
-  if (!Array.isArray(state.mapLayers) || !state.mapLayers.length) state.mapLayers = defaultMapLayers();
-  if (!state.mapBackgroundColor) state.mapBackgroundColor = '#d9dde3';
-  state.mapLayers.forEach(layer => {
-    if (layer.visible == null) layer.visible = true;
-    if (layer.opacity == null) layer.opacity = 1;
-    if (layer.type === 'vector' && !layer.color) layer.color = OPENFREE_DEFAULT_COLORS[layer.group] || '#777777';
-    if (layer.type === 'raster' && !layer.baseMap) layer.baseMap = 'voyager';
-    if (layer.type === 'hex') {
-      if (!layer.fillColor) layer.fillColor = layer.color || '#e94560';
-      if (!layer.diameterType) layer.diameterType = 'point';
-    }
-  });
-}
-
-function ensureMapLayerPanes() {
-  ensureMapLayerModel();
-  state.mapLayers.forEach((layer, index) => {
-    const pane = map.getPane(mapLayerPaneName(layer)) || map.createPane(mapLayerPaneName(layer));
-    pane.style.zIndex = String(250 + Math.round((state.mapLayers.length - index) * 140 / Math.max(1, state.mapLayers.length)));
-    pane.style.pointerEvents = 'none';
-  });
-}
+const openFreeMapLayer = (window.maplibregl && L.maplibreGL) ? L.maplibreGL({
+  style: 'https://tiles.openfreemap.org/styles/liberty',
+  opacity: mapDisplay.vectorOpacity,
+  attributionControl: { customAttribution: '&copy; OpenStreetMap contributors &copy; OpenMapTiles | OpenFreeMap' },
+  interactive: false,
+  pane: 'tilePane'
+}) : null;
 
 function setLayerOpacity(layer, value) {
   const opacity = Math.max(0, Math.min(1, Number(value)));
@@ -1846,71 +1773,52 @@ function setLayerOpacity(layer, value) {
   else if (layer.getContainer?.()) layer.getContainer().style.opacity = opacity;
 }
 
-function applyMapBackgroundColor() {
-  const color = /^#[0-9a-f]{6}$/i.test(state.mapBackgroundColor || '') ? state.mapBackgroundColor : '#d9dde3';
-  map.getContainer().style.backgroundColor = color;
-  const tilePane = map.getPane('tilePane');
-  if (tilePane) tilePane.style.backgroundColor = color;
-}
-
-function applyMapLayers() {
-  ensureMapLayerModel();
-  ensureMapLayerPanes();
-  applyMapBackgroundColor();
+function applyMapDisplay() {
   Object.values(BASEMAPS).forEach(cfg => {
     if (map.hasLayer(cfg.layer)) map.removeLayer(cfg.layer);
   });
-  const raster = state.mapLayers.find(layer => layer.type === 'raster');
-  if (raster?.visible) {
-    const base = BASEMAPS[raster.baseMap] || BASEMAPS.voyager;
-    base.layer.options.pane = mapLayerPaneName(raster);
-    setLayerOpacity(base.layer, raster.opacity ?? 1);
-    base.layer.addTo(map);
-  }
-
-  const liveVectorIds = new Set();
-  state.mapLayers.filter(layer => layer.type === 'vector').forEach(entry => {
-    let runtime = vectorLayerRuntime.get(entry.id);
-    if (entry.visible && window.maplibregl && L.maplibreGL) {
-      if (!runtime) {
-        runtime = L.maplibreGL({
-          style: 'https://tiles.openfreemap.org/styles/liberty',
-          opacity: entry.opacity ?? 1,
-          attributionControl: { customAttribution: '&copy; OpenStreetMap contributors &copy; OpenMapTiles | OpenFreeMap' },
-          interactive: false,
-          pane: mapLayerPaneName(entry)
-        });
-        runtime.on?.('add', () => scheduleSingleVectorLayer(entry.id));
-        vectorLayerRuntime.set(entry.id, runtime);
-      }
-      runtime.options.pane = mapLayerPaneName(entry);
-      setLayerOpacity(runtime, entry.opacity ?? 1);
-      if (!map.hasLayer(runtime)) runtime.addTo(map);
-      scheduleSingleVectorLayer(entry.id);
-      liveVectorIds.add(entry.id);
-    } else if (runtime && map.hasLayer(runtime)) {
-      map.removeLayer(runtime);
-    }
-  });
-
-  for (const [id, runtime] of vectorLayerRuntime.entries()) {
-    if (!getMapLayer(id)) {
-      if (map.hasLayer(runtime)) map.removeLayer(runtime);
-      vectorLayerRuntime.delete(id);
+  const base = BASEMAPS[mapDisplay.baseMap] || BASEMAPS.voyager;
+  base.layer.addTo(map);
+  if (openFreeMapLayer) {
+    if (mapDisplay.vectorEnabled && !map.hasLayer(openFreeMapLayer)) openFreeMapLayer.addTo(map);
+    if (!mapDisplay.vectorEnabled && map.hasLayer(openFreeMapLayer)) map.removeLayer(openFreeMapLayer);
+    setLayerOpacity(openFreeMapLayer, mapDisplay.vectorOpacity);
+    if (mapDisplay.vectorEnabled) {
+      openFreeMapLayer.bringToFront?.();
+      scheduleOpenFreeMapFilters();
     }
   }
+}
 
-  for (const runtime of geoJsonLayerRuntime.values()) if (map.hasLayer(runtime)) map.removeLayer(runtime);
-  geoJsonLayerRuntime.clear();
-  state.mapLayers.filter(layer => layer.type === 'geojson' && layer.visible && layer.geojson).forEach(entry => {
-    const pane = mapLayerPaneName(entry);
-    const runtime = L.geoJSON(entry.geojson, {
-      pane,
-      style: () => ({ color: entry.color || '#e94560', weight: entry.weight || 2, opacity: entry.opacity ?? 1, fillColor: entry.fillColor || entry.color || '#e94560', fillOpacity: entry.fillOpacity ?? 0.15, pane }),
-      pointToLayer: (feature, latlng) => L.circleMarker(latlng, { radius: 5, color: entry.color || '#e94560', fillColor: entry.fillColor || entry.color || '#e94560', fillOpacity: entry.fillOpacity ?? 0.7, pane })
-    }).addTo(map);
-    geoJsonLayerRuntime.set(entry.id, runtime);
+function setBaseMap(id) {
+  if (!BASEMAPS[id]) return;
+  mapDisplay.baseMap = id;
+  applyMapDisplay();
+  refreshLayersPanelIfOpen();
+}
+
+function setVectorOverlayEnabled(enabled) {
+  mapDisplay.vectorEnabled = !!enabled;
+  applyMapDisplay();
+  refreshLayersPanelIfOpen();
+}
+
+function setVectorOverlayOpacity(value) {
+  mapDisplay.vectorOpacity = Math.max(0, Math.min(1, Number(value)));
+  if (openFreeMapLayer) setLayerOpacity(openFreeMapLayer, mapDisplay.vectorOpacity);
+}
+
+function setOpenFreeMapGroup(id, enabled) {
+  mapDisplay.referenceGroups[id] = !!enabled;
+  applyOpenFreeMapFilters();
+}
+
+function setOpenFreeMapPreset(mode) {
+  OPENFREE_GROUPS.forEach(group => {
+    mapDisplay.referenceGroups[group.id] = mode === 'all' || (mode === 'military' && ['water','roads','rail','places','borders','chokepoints','transport'].includes(group.id));
   });
+  applyOpenFreeMapFilters();
+  refreshLayersPanelIfOpen();
 }
 
 function openFreeMapGroupsForStyleLayer(styleLayer) {
@@ -1930,45 +1838,34 @@ function openFreeMapGroupsForStyleLayer(styleLayer) {
   return [...new Set(groups)];
 }
 
-function scheduleSingleVectorLayer(id) {
-  requestAnimationFrame(() => applySingleVectorLayer(id));
+function scheduleOpenFreeMapFilters() {
+  requestAnimationFrame(applyOpenFreeMapFilters);
 }
 
-function applySingleVectorLayer(id) {
-  const entry = getMapLayer(id);
-  const runtime = vectorLayerRuntime.get(id);
-  if (!entry || !runtime || !map.hasLayer(runtime) || typeof runtime.getMaplibreMap !== 'function') return;
-  const vectorMap = runtime.getMaplibreMap();
+function applyOpenFreeMapFilters() {
+  if (!openFreeMapLayer || !map.hasLayer(openFreeMapLayer) || typeof openFreeMapLayer.getMaplibreMap !== 'function') return;
+  const vectorMap = openFreeMapLayer.getMaplibreMap();
   if (!vectorMap?.getStyle) return;
   try {
     const style = vectorMap.getStyle();
     if (!style?.layers?.length) {
-      vectorMap.once?.('styledata', () => scheduleSingleVectorLayer(id));
-      vectorMap.once?.('load', () => scheduleSingleVectorLayer(id));
+      vectorMap.once?.('styledata', scheduleOpenFreeMapFilters);
+      vectorMap.once?.('load', scheduleOpenFreeMapFilters);
       return;
     }
     style.layers.forEach(styleLayer => {
       if (!styleLayer?.id || !vectorMap.getLayer(styleLayer.id)) return;
       const groups = openFreeMapGroupsForStyleLayer(styleLayer);
-      const visible = entry.group === 'other' ? groups.length === 0 : groups.includes(entry.group);
+      const visible = groups.length ? groups.some(id => mapDisplay.referenceGroups[id]) : mapDisplay.referenceGroups.other;
       vectorMap.setLayoutProperty(styleLayer.id, 'visibility', visible ? 'visible' : 'none');
-      if (!visible || !entry.color) return;
-      const property = styleLayer.type === 'line' ? 'line-color'
-        : styleLayer.type === 'fill' ? 'fill-color'
-        : styleLayer.type === 'background' ? 'background-color'
-        : styleLayer.type === 'circle' ? 'circle-color'
-        : styleLayer.type === 'symbol' ? 'text-color' : null;
-      if (property) {
-        try { vectorMap.setPaintProperty(styleLayer.id, property, entry.color); } catch (e) {}
-      }
     });
   } catch (error) {
-    vectorMap.once?.('styledata', () => scheduleSingleVectorLayer(id));
+    vectorMap.once?.('styledata', scheduleOpenFreeMapFilters);
   }
 }
 
-ensureMapLayerModel();
-applyMapLayers();
+openFreeMapLayer?.on?.('add', scheduleOpenFreeMapFilters);
+applyMapDisplay();
 
 // ═══════════════════════════════════════════════════════════════════
 // LAYER GROUPS (Leaflet groups that contain rendered items)
@@ -2008,7 +1905,7 @@ try { syncChannel = new BroadcastChannel('bg-clasher-sync'); } catch (e) { syncC
 // is local per window. We deliberately omit the logs — they'd multiply in size with
 // every broadcast, and mirrors don't use them.
 const SYNCED_STATE_FIELDS = [
-  'scenario', 'units', 'markers', 'drawings', 'layers', 'mapLayers', 'mapBackgroundColor', 'movementOrders',
+  'scenario', 'units', 'markers', 'drawings', 'layers', 'movementOrders',
   'oob', 'syncMatrix', 'turnNumber', 'nextId', 'detectionCounters', 'gameMode',
   'unitTemplates', 'markerTemplates', 'symbolTemplates', 'diceTemplates', 'sideOrders'
 ];
@@ -2120,14 +2017,6 @@ function formatDist(m) {
   return Math.round(m) + ' m';
 }
 function cloneDeep(o) { if (o === undefined || o === null) return o; return JSON.parse(JSON.stringify(o)); }
-
-function captureScenarioMapLayerDefaults() {
-  ensureMapLayerModel();
-  scenarioMapLayerDefaults = {
-    mapLayers: cloneDeep(state.mapLayers),
-    mapBackgroundColor: state.mapBackgroundColor || '#d9dde3'
-  };
-}
 
 let infoToastTimer = null;
 function showInfoToast(html) {
@@ -2346,23 +2235,17 @@ function ensureSideOrders() {
 
 function ensureLayerModel() {
   if (!Array.isArray(state.layers)) state.layers = [];
-  ensureMapLayerModel();
   state.layers.forEach(layer => { if (!layer.type) layer.type = 'drawing'; });
-  const embeddedHexes = state.layers.filter(layer => layer.type === 'hex');
-  embeddedHexes.forEach(layer => {
-    if (!state.mapLayers.some(mapLayer => mapLayer.id === layer.id)) state.mapLayers.unshift(layer);
-  });
-  if (embeddedHexes.length) state.layers = state.layers.filter(layer => layer.type !== 'hex');
   if (Array.isArray(state.hexOverlays)) {
     state.hexOverlays.forEach(old => {
-      if (state.mapLayers.some(layer => layer.id === old.id)) return;
+      if (state.layers.some(layer => layer.id === old.id)) return;
       const migrated = Object.assign({}, old, {
         type: 'hex',
         visible: old.enabled !== false,
         editability: 'umpire'
       });
       delete migrated.enabled;
-      state.mapLayers.unshift(migrated);
+      state.layers.push(migrated);
     });
     delete state.hexOverlays;
   }
@@ -4388,14 +4271,14 @@ function deleteDrawing(id) {
 
 function refreshLayersPanelIfOpen() {
   const title = document.getElementById('panelTitle');
-  if (title && title.textContent === 'Map Layers') {
+  if (title && title.textContent === 'Layers') {
     renderLayersPanel(document.getElementById('panelBody'));
   }
 }
 
 function refreshUnitsPanelIfOpen() {
-  const panel = document.getElementById('panel');
-  if (currentPanel.type === 'units' && panel?.classList.contains('open')) {
+  const title = document.getElementById('panelTitle');
+  if (title && title.textContent === 'Units') {
     renderUnitsPanel(document.getElementById('panelBody'));
   }
 }
@@ -4498,7 +4381,7 @@ function makeHexOverlayBase(name, coverage, clipLatLngs) {
     visibility: 'all',
     editability: 'umpire',
     diameterKm: 10,
-    diameterType: 'point',
+    diameterType: 'flat',
     orientation: 'flat',
     anchor: center,
     coverage,
@@ -4510,7 +4393,6 @@ function makeHexOverlayBase(name, coverage, clipLatLngs) {
     } : null,
     polygon: coverage === 'polygon' ? clipLatLngs.map(p => [p[0], p[1]]) : null,
     color: '#e94560',
-    fillColor: '#e94560',
     weight: 1,
     opacity: 0.85,
     fillOpacity: 0,
@@ -4533,9 +4415,9 @@ function createHexOverlayFromCurrentView() {
     [b.getNorth(), b.getEast()],
     [b.getSouth(), b.getEast()]
   ];
-  const count = state.mapLayers.filter(layer => layer.type === 'hex').length;
+  const count = state.layers.filter(layer => layer.type === 'hex').length;
   const layer = makeHexOverlayBase('Hex layer ' + (count + 1), 'bounds', pts);
-  state.mapLayers.unshift(layer);
+  state.layers.push(layer);
   layerObjectsExpanded[layer.id] = true;
   renderHexOverlays();
   renderLayersPanel(document.getElementById('panelBody'));
@@ -4551,9 +4433,9 @@ function createHexOverlayFromDrawing() {
   const d = state.drawings.find(x => x.id === sel?.value);
   if (!d || d.type !== 'polygon') { alert('Choose a polygon drawing first.'); return; }
   const label = d.properties?.label || 'Polygon';
-  const count = state.mapLayers.filter(layer => layer.type === 'hex').length;
+  const count = state.layers.filter(layer => layer.type === 'hex').length;
   const layer = makeHexOverlayBase('Hex layer ' + (count + 1) + ' - ' + label, 'polygon', d.geometry.points);
-  state.mapLayers.unshift(layer);
+  state.layers.push(layer);
   layerObjectsExpanded[layer.id] = true;
   renderHexOverlays();
   renderLayersPanel(document.getElementById('panelBody'));
@@ -4569,7 +4451,7 @@ function hexCellVertices(center, radiusM, orientation) {
 
 function hexOverlayCells(overlay) {
   const clipLatLngs = hexOverlayClipLatLngs(overlay);
-  if (!clipLatLngs.length) return { centered: false, cells: [] };
+  if (!clipLatLngs.length) return [];
   const anchor = overlay.anchor || polygonCentroidLatLng(clipLatLngs);
   const sizeM = Math.max(10, (parseFloat(overlay.diameterKm) || 10) * 1000);
   const flatDiameter = overlay.diameterType === 'point' ? sizeM * Math.sqrt(3) / 2 : sizeM;
@@ -4580,37 +4462,24 @@ function hexOverlayCells(overlay) {
   const minX = Math.min(...xs) - margin, maxX = Math.max(...xs) + margin;
   const minY = Math.min(...ys) - margin, maxY = Math.max(...ys) + margin;
   const orientation = overlay.orientation || 'flat';
-  const maxCells = 4000;
-  const localForIndex = (q, r) => orientation === 'point'
-    ? { x: flatDiameter * (q + (Math.abs(r) % 2) / 2), y: radius * 1.5 * r }
-    : { x: radius * 1.5 * q, y: flatDiameter * (r + (Math.abs(q) % 2) / 2) };
-  const cellForIndex = (q, r) => {
-    const local = localForIndex(q, r);
-    const center = latLngFromLocalOffset(anchor, local.x, local.y);
-    return { center, vertices: hexCellVertices(center, radius, orientation), q, r, distance2: local.x * local.x + local.y * local.y };
-  };
-  const centeredCells = () => {
-    const reach = Math.ceil(Math.sqrt(maxCells)) + 4;
-    const candidates = [];
-    for (let q = -reach; q <= reach; q++) {
-      for (let r = -reach; r <= reach; r++) candidates.push(cellForIndex(q, r));
-    }
-    candidates.sort((a, b) => a.distance2 - b.distance2);
-    return { centered: true, cells: candidates.slice(0, maxCells) };
-  };
-
   const cells = [];
+  const maxCells = 4000;
+  const warningCenter = latLngFromLocalOffset(anchor, (minX + maxX) / 2, (minY + maxY) / 2);
   if (orientation === 'point') {
     const stepX = flatDiameter;
     const stepY = radius * 1.5;
     const rMin = Math.floor(minY / stepY) - 2, rMax = Math.ceil(maxY / stepY) + 2;
     const qMin = Math.floor(minX / stepX) - 2, qMax = Math.ceil(maxX / stepX) + 2;
-    if ((rMax - rMin + 1) * (qMax - qMin + 1) > maxCells * 8) return centeredCells();
+    if ((rMax - rMin + 1) * (qMax - qMin + 1) > maxCells * 8) return { tooMany: true, cells, warningCenter };
     for (let r = rMin; r <= rMax; r++) {
       for (let q = qMin; q <= qMax; q++) {
-        const local = localForIndex(q, r);
+        const x = stepX * (q + (Math.abs(r) % 2) / 2);
+        const y = stepY * r;
+        const local = { x, y };
         if (!pointInLocalPolygon(local, clipLocal)) continue;
-        cells.push(cellForIndex(q, r));
+        const center = latLngFromLocalOffset(anchor, x, y);
+        cells.push({ center, vertices: hexCellVertices(center, radius, orientation), q, r });
+        if (cells.length > maxCells) return { tooMany: true, cells };
       }
     }
   } else {
@@ -4618,20 +4487,20 @@ function hexOverlayCells(overlay) {
     const stepY = flatDiameter;
     const qMin = Math.floor(minX / stepX) - 2, qMax = Math.ceil(maxX / stepX) + 2;
     const rMin = Math.floor(minY / stepY) - 2, rMax = Math.ceil(maxY / stepY) + 2;
-    if ((rMax - rMin + 1) * (qMax - qMin + 1) > maxCells * 8) return centeredCells();
+    if ((rMax - rMin + 1) * (qMax - qMin + 1) > maxCells * 8) return { tooMany: true, cells, warningCenter };
     for (let q = qMin; q <= qMax; q++) {
       for (let r = rMin; r <= rMax; r++) {
-        const local = localForIndex(q, r);
+        const x = stepX * q;
+        const y = stepY * (r + (Math.abs(q) % 2) / 2);
+        const local = { x, y };
         if (!pointInLocalPolygon(local, clipLocal)) continue;
-        cells.push(cellForIndex(q, r));
+        const center = latLngFromLocalOffset(anchor, x, y);
+        cells.push({ center, vertices: hexCellVertices(center, radius, orientation), q, r });
+        if (cells.length > maxCells) return { tooMany: true, cells };
       }
     }
   }
-  if (cells.length > maxCells) {
-    cells.sort((a, b) => a.distance2 - b.distance2);
-    return { centered: true, cells: cells.slice(0, maxCells) };
-  }
-  return { centered: false, cells };
+  return { tooMany: false, cells };
 }
 
 function assignHexRowColumn(cells) {
@@ -4661,9 +4530,9 @@ function hexLineWeightForZoom(baseWeight) {
 
 function renderHexOverlays() {
   ensureLayerModel();
-  ensureMapLayerPanes();
+  ensureScenarioLayerPanes();
   LG.hexes.clearLayers();
-  state.mapLayers.filter(layer => layer.type === 'hex').forEach(overlay => {
+  state.layers.filter(layer => layer.type === 'hex').forEach(overlay => {
     if (!hexOverlayVisibilityAllows(overlay)) return;
     const result = hexOverlayCells(overlay);
     const cells = result.cells || [];
@@ -4674,52 +4543,51 @@ function renderHexOverlays() {
         color,
         weight: hexLineWeightForZoom(overlay.weight),
         opacity: overlay.opacity ?? 0.85,
-        fillColor: overlay.fillColor || color,
         fillOpacity: overlay.fillOpacity ?? 0,
         interactive: false,
         smoothFactor: 0,
-        pane: mapLayerPaneName(overlay)
+        pane: layerPaneName(overlay)
       }));
       if (overlay.labels) {
         const html = `<div style="font:700 10px var(--font);color:${esc(color)};text-shadow:-1px -1px 0 #fff,1px -1px 0 #fff,-1px 1px 0 #fff,1px 1px 0 #fff;white-space:nowrap">${cell.row},${cell.column}</div>`;
         LG.hexes.addLayer(L.marker(cell.center, {
           interactive: false,
-          pane: mapLayerPaneName(overlay),
+          pane: layerPaneName(overlay),
           icon: L.divIcon({ className: '', html, iconSize: null, iconAnchor: [10, 5] })
         }));
       }
     });
+    if (result.tooMany) {
+      const center = cells.length ? cells[Math.floor(cells.length / 2)].center : (result.warningCenter || overlay.anchor);
+      LG.hexes.addLayer(L.marker(center, {
+        interactive: false,
+        icon: L.divIcon({
+          className: '',
+          html: `<div style="background:rgba(168,48,48,0.92);color:#fff;padding:4px 8px;border-radius:4px;font-size:11px;white-space:nowrap">Hex overlay truncated at 4000 cells. Reduce area or increase size.</div>`,
+          iconSize: null,
+          iconAnchor: [0, 0]
+        })
+      }));
+    }
   });
-}
-
-function hexLayerStats(h) {
-  const result = hexOverlayCells(h);
-  const cells = result.cells || [];
-  assignHexRowColumn(cells);
-  const rows = cells.reduce((max, cell) => Math.max(max, cell.row || 0), 0);
-  const columns = cells.reduce((max, cell) => Math.max(max, cell.column || 0), 0);
-  return { rows, columns, count: cells.length, centered: !!result.centered };
 }
 
 function hexLayerControlsHtml(h) {
   const isUmpire = state.viewRole === 'umpire';
   const cover = h.coverage === 'polygon' ? 'polygon clip' : 'view rectangle';
-  const stats = hexLayerStats(h);
-  const shapeText = `${stats.rows} × ${stats.columns}, ${stats.count} hexes${stats.centered ? ' · centred maximum' : ''}`;
   const labelToggle = `<label style="display:flex;align-items:center;justify-content:flex-start;gap:6px;font-size:11px;white-space:nowrap;text-align:left;width:max-content"><input type="checkbox" ${h.labels?'checked':''} onchange="updateHexOverlay('${h.id}','labels',this.checked)"> Labels</label>`;
   if (!isUmpire) {
     return `<div style="padding:5px 8px 8px 28px">
       ${labelToggle}
-      <div style="font-size:10px;color:var(--text-dim);margin-top:4px">${esc(h.diameterKm ?? 10)} km · ${(h.diameterType||'point') === 'flat' ? 'flat-to-flat' : 'point-to-point'} · ${shapeText}</div>
+      <div style="font-size:10px;color:var(--text-dim);margin-top:4px">${esc(h.diameterKm ?? 10)} km · ${(h.diameterType||'flat') === 'flat' ? 'flat-to-flat' : 'point-to-point'} · ${cover}</div>
     </div>`;
   }
   const visOpts = ['all','bluefor','opfor','umpire'].map(v => `<option value="${v}" ${h.visibility===v?'selected':''}>${v}</option>`).join('');
   return `<div style="padding:5px 8px 8px 28px">
-    <div class="field-group"><label>Name</label><input type="text" value="${esc(h.name || '')}" onchange="updateHexOverlay('${h.id}','name',this.value);renderLayersPanel(document.getElementById('panelBody'))"></div>
     <div class="field-group row" style="margin-top:4px">
       <div><label>Diameter (km)</label><input type="number" min="0.05" step="0.1" value="${esc(h.diameterKm ?? 10)}" onchange="updateHexOverlay('${h.id}','diameterKm',parseFloat(this.value)||10)"></div>
       <div><label>Measured as</label><select onchange="updateHexOverlay('${h.id}','diameterType',this.value)">
-        <option value="flat" ${h.diameterType==='flat'?'selected':''}>Flat-to-flat</option>
+        <option value="flat" ${(h.diameterType||'flat')==='flat'?'selected':''}>Flat-to-flat</option>
         <option value="point" ${h.diameterType==='point'?'selected':''}>Point-to-point</option>
       </select></div>
       <div><label>Orientation</label><select onchange="updateHexOverlay('${h.id}','orientation',this.value)">
@@ -4729,35 +4597,29 @@ function hexLayerControlsHtml(h) {
     </div>
     <div class="field-group row">
       <div><label>Visibility</label><select onchange="updateHexOverlay('${h.id}','visibility',this.value)">${visOpts}</select></div>
-      <div><label>Line colour</label><input type="color" value="${h.color || '#e94560'}" onchange="updateHexOverlay('${h.id}','color',this.value)"></div>
-      <div><label>Fill colour</label><input type="color" value="${h.fillColor || h.color || '#e94560'}" onchange="updateHexOverlay('${h.id}','fillColor',this.value)"></div>
+      <div><label>Colour</label><input type="color" value="${h.color || '#e94560'}" onchange="updateHexOverlay('${h.id}','color',this.value)"></div>
       <div><label>Weight</label><input type="number" min="0.5" max="6" step="0.5" value="${esc(h.weight ?? 1)}" onchange="updateHexOverlay('${h.id}','weight',parseFloat(this.value)||1)"></div>
     </div>
     <div class="field-group row">
-      <div><label>Line opacity (%)</label><input type="number" min="0" max="100" step="5" value="${Math.round((h.opacity ?? 0.85) * 100)}" onchange="updateHexOpacity('${h.id}','opacity',this.value)"></div>
-      <div><label>Fill opacity (%)</label><input type="number" min="0" max="100" step="5" value="${Math.round((h.fillOpacity ?? 0) * 100)}" onchange="updateHexOpacity('${h.id}','fillOpacity',this.value)"></div>
+      <div><label>Line opacity</label><input type="number" min="0" max="1" step="0.05" value="${esc(h.opacity ?? 0.85)}" onchange="updateHexOverlay('${h.id}','opacity',parseFloat(this.value))"></div>
+      <div><label>Fill opacity</label><input type="number" min="0" max="0.5" step="0.02" value="${esc(h.fillOpacity ?? 0)}" onchange="updateHexOverlay('${h.id}','fillOpacity',parseFloat(this.value))"></div>
       <div style="display:flex;align-items:flex-end">${labelToggle}</div>
     </div>
     <div class="field-group row">
-      <div><label>Anchor latitude</label><input type="number" min="-90" max="90" step="0.0001" value="${Number(h.anchor?.[0] || 0).toFixed(4)}" onchange="setHexAnchorCoordinate('${h.id}',0,this.value)"></div>
-      <div><label>Anchor longitude</label><input type="number" min="-180" max="180" step="0.0001" value="${Number(h.anchor?.[1] || 0).toFixed(4)}" onchange="setHexAnchorCoordinate('${h.id}',1,this.value)"></div>
+      <div><label>Anchor latitude</label><input type="number" min="-90" max="90" step="0.00001" value="${Number(h.anchor?.[0] || 0).toFixed(5)}" onchange="setHexAnchorCoordinate('${h.id}',0,this.value)"></div>
+      <div><label>Anchor longitude</label><input type="number" min="-180" max="180" step="0.00001" value="${Number(h.anchor?.[1] || 0).toFixed(5)}" onchange="setHexAnchorCoordinate('${h.id}',1,this.value)"></div>
     </div>
     <div class="btn-row">
-      <button class="small ghost" onclick="setHexAnchorToMapCenter('${h.id}')">Center hex grid to map center</button>
+      <button class="small ghost" onclick="setHexAnchorToMapCenter('${h.id}')">Anchor = Map Center</button>
+      <button class="small ghost" onclick="setHexBoundsToCurrentView('${h.id}')">Coverage = Current View</button>
       <button class="small ghost" onclick="zoomToHexOverlay('${h.id}')">Zoom</button>
-      <button class="small ghost" onclick="exportHexLayerGeoJSON('${h.id}')">Export GeoJSON</button>
     </div>
-    <div style="font-size:10px;color:var(--text-dim);font-family:var(--mono)">Shape: ${shapeText} · Coverage: ${cover}</div>
+    <div style="font-size:10px;color:var(--text-dim);font-family:var(--mono)">Coverage: ${cover}</div>
   </div>`;
 }
 
-function updateHexOpacity(id, field, percent) {
-  const value = Math.max(0, Math.min(100, parseFloat(percent) || 0)) / 100;
-  updateHexOverlay(id, field, value);
-}
-
 function updateHexOverlay(id, field, value) {
-  const h = getMapLayer(id);
+  const h = getLayer(id);
   if (!h) return;
   if (state.viewRole !== 'umpire' && field !== 'labels') return;
   h[field] = value;
@@ -4768,15 +4630,14 @@ function updateHexOverlay(id, field, value) {
 function deleteHexOverlay(id) {
   confirmModal('Delete this hex overlay?').then(ok => {
     if (!ok) return;
-    state.mapLayers = state.mapLayers.filter(layer => layer.id !== id);
-    renderAll();
+    deleteLayer(id);
     renderLayersPanel(document.getElementById('panelBody'));
     syncMirrors();
   });
 }
 
 function setHexAnchorToMapCenter(id) {
-  const h = getMapLayer(id);
+  const h = getLayer(id);
   if (!h) return;
   const c = map.getCenter();
   h.anchor = [c.lat, c.lng];
@@ -4787,7 +4648,7 @@ function setHexAnchorToMapCenter(id) {
 
 function setHexAnchorCoordinate(id, index, value) {
   if (state.viewRole !== 'umpire') return;
-  const h = getMapLayer(id);
+  const h = getLayer(id);
   const number = parseFloat(value);
   if (!h || !Number.isFinite(number)) return;
   if (!Array.isArray(h.anchor)) h.anchor = [map.getCenter().lat, map.getCenter().lng];
@@ -4796,10 +4657,22 @@ function setHexAnchorCoordinate(id, index, value) {
   syncMirrors();
 }
 
-function zoomToHexOverlay(id) {
-  const h = getMapLayer(id);
+function setHexBoundsToCurrentView(id) {
+  const h = getLayer(id);
   if (!h) return;
-  const pts = (hexOverlayCells(h).cells || []).flatMap(cell => cell.vertices || []);
+  const b = map.getBounds();
+  h.coverage = 'bounds';
+  h.bounds = { south: b.getSouth(), west: b.getWest(), north: b.getNorth(), east: b.getEast() };
+  h.polygon = null;
+  renderHexOverlays();
+  renderLayersPanel(document.getElementById('panelBody'));
+  syncMirrors();
+}
+
+function zoomToHexOverlay(id) {
+  const h = getLayer(id);
+  if (!h) return;
+  const pts = hexOverlayClipLatLngs(h);
   if (pts.length) map.fitBounds(L.latLngBounds(pts.map(p => L.latLng(p[0], p[1]))), { padding: [30, 30] });
 }
 
@@ -4881,22 +4754,19 @@ function helpPanelHTML() {
     <p>The <b>Scenario</b> button opens a tabbed builder:</p>
     <ul style="margin:4px 0 8px 18px;padding:0">
       <li><b>General</b> — name, start date/time, turn duration, turn limit, icon scale (with per-scenario min/max bounds), local icon folder, Side Colours (BLUFOR/OPFOR arrow, tooltip bg, tooltip text), Order Graphics (arrow scale slider + per-order-type pixel weight overrides), Role Passwords, and Data Management (export/import of scenario, OOB+Templates, Graphics, and Templates-only).</li>
+      <li><b>OOB BLUFOR / OOB OPFOR</b> — each side's order of battle as one level of collapsible formations plus loose units. <i>+ Formation</i> creates a root formation; <i>+ Unit</i> lets you pick a template and formation. OOB rows show miniature outlined APP-6 symbols, unit names as <i>name (designation)</i>, modifier pills where relevant, ↑/↓ reordering, and unit movement between formations or back to no formation. Each tab has its own <b>Export ${'{SIDE}'} OOB</b> / <b>Import</b> buttons so individual sides can be saved and loaded independently, carrying only the unit templates they reference plus the modifier library.</li>
+      <li><b>Unit Tpl</b> — reusable templates with an APP-6 / NATO symbol picker powered by milsymbol, plus mutually-exclusive states (Mounted / Dismounted / …), each carrying its own stats, movement rates, and range rings (with per-ring <i>visible</i> and <i>label</i> toggles). Each template declares which modifiers are available for units built from it. Individual templates can be exported or imported from this tab. In APP-6 editors, Friendly means BLUFOR and Hostile means OPFOR; Outline sits next to the manual SIDC override.</li>
       <li><b>Modifiers</b> — the library of overlays units can carry. Boolean (REORG on/off, Dug in) or counter with sequential levels (ATGM 2→1, Suppressed → Disrupted). Per-modifier: colour (or SVG icon), stack priority, map-badge placement (right / left / top / bottom), icon-relative X/Y offsets, add/remove/step permissions (umpire / owner / opponent / any), and a visible-to-opponent flag. "Reset to BGC Defaults" reseeds the broad starter set.</li>
       <li><b>Markers / Symbols / Dice</b> — templates for game markers (objectives, IEDs, named areas — with optional range rings), map symbols (APP-6 or custom SVG), and dice rollers. Dice presets can be flagged as <b>Quick roll</b>; press <b>D</b> anywhere on the map to roll one, or to choose from a small menu when several are flagged.</li>
-    </ul>
-    <p>For the umpire, the <b>Units</b> pane contains two administrative tabs:</p>
-    <ul style="margin:4px 0 8px 18px;padding:0">
-      <li><b>Order of Battle</b> — both BLUFOR and OPFOR OOBs, each with formations, loose units, deployment, reordering, and side-specific export/import controls.</li>
-      <li><b>Unit Templates</b> — reusable APP-6 unit definitions with states, stats, movement rates, range rings, available modifiers, and individual import/export.</li>
     </ul>
 
     <h3 style="margin:14px 0 6px 0">Placing and moving units</h3>
     <ul style="margin:4px 0 8px 18px;padding:0">
-      <li><b>Units</b> (or keyboard <b>U</b>) — opens the side's Units pane. Use an OOB row's Deploy control to place that unit on the map.</li>
+      <li><b>▲ Place Unit</b> (or keyboard <b>U</b>) — opens a modal to deploy from OOB or place a new unit from a template. Same tool places a <i>suspected enemy</i> marker: an APP-6 unknown contact with a running contact number for that side.</li>
       <li><b>Drag</b> a unit icon to move it. Carried passengers follow along; undo pulls them back with their carrier too.</li>
       <li><b>Move tool</b> — click a unit, then click a sequence of points to plot an ordered movement path with ETA, speed, and segment modes. Clicking on another unit or marker uses that entity's exact position as a waypoint.</li>
       <li><b>Edit tool + unit click</b> — withdraw the unit. Cascades to passengers with a confirmation naming them.</li>
-      <li><b>Player Units pane</b> — shows only that player's OOB. Click a unit row to center the map on it; click a formation row to center on the centroid of deployed units. <b>Show on map</b> draws a dashed side-coloured buffered polygon and center label around that formation's deployed units, visible only to the owning side and umpire.</li>
+      <li><b>Units panel</b> — shows the OOB with the same miniature outlined APP-6 symbols as the OOB builder. Click a unit row to center the map on it; click a formation row to center on the centroid of deployed units. <b>Show on map</b> draws a dashed side-coloured buffered polygon and center label around that formation's deployed units, visible only to the owning side and umpire.</li>
     </ul>
 
     <h3 style="margin:14px 0 6px 0">Unit edit panel</h3>
@@ -4923,7 +4793,7 @@ function helpPanelHTML() {
     <ul style="margin:4px 0 8px 18px;padding:0">
       <li>Continuous drawing — after finishing one shape the tool stays active for the next.</li>
       <li><b>Snap toolbar</b> — toggles angle and length snapping while drawing. Re-click the snap buttons to change the step.</li>
-      <li>The <b>Map Layers</b> pane separates ordered Scenario Layers from ordered Map Layers. Drawing layers stay in Scenario Layers; raster, vector, GeoJSON, and geodesic hex layers are in Map Layers.</li>
+      <li>Drawings and geodesic hex grids share the ordered <b>Layers</b> stack. Use the top-bar Layers button or layer chip to select a drawing layer, reorder layers, change visibility, and edit umpire-owned hex settings.</li>
       <li>Clicks on units or markers pass through to the drawing tool so you can start lines, circles, or rings on top of existing icons.</li>
     </ul>
 
@@ -4940,11 +4810,9 @@ function helpPanelHTML() {
       <li><b>Bottom coordinate readout</b> — shows latitude/longitude plus MGRS for the cursor position.</li>
       <li><b>Bottom icon scale slider</b> — uses side-specific infantry icons as size examples. Scale is remembered per view role; scenario export stores the umpire's scale and scenario import applies it to all roles.</li>
       <li><b>Drag crosshair</b> — marks the exact map centre only while the map is being dragged.</li>
-      <li><b>Hex layers</b> — create a geodesic grid over the current map view or a drawn polygon. Set real-world diameter, orientation, separate line/fill styling, visibility, labels, and exact anchor coordinates. Labels count from the top-left as row,column; players can toggle labels but cannot alter grid geometry or styling.</li>
-      <li><b>Raster and vector maps</b> — Raster map selects one tile background. OpenFreeMap reference categories are independent, reorderable vector layers with visibility and colour controls.</li>
-      <li><b>GeoJSON</b> — scenario and map groups can import GeoJSON as new layers; layer and hex controls can export GeoJSON. Invalid or unsupported features are skipped with a detailed warning. Scenario drawing import supports Point, LineString, and Polygon; the Map Layers importer supports standard GeoJSON geometry types.</li>
-      <li><b>Restore scenario defaults</b> — restores background-map settings and order from the last scenario load or save, including saved hex grids. Layers added afterward remain, and Scenario Layers are never modified.</li>
-      <li><b>Layer chip</b> (top bar) — click to open Map Layers; it shows the currently active drawing layer. Top-bar panel buttons toggle their panel closed if it is already open; the panel X remains available too.</li>
+      <li><b>Hex layers</b> — create a geodesic grid over the current map view or a drawn polygon. Set real-world diameter, orientation, styling, visibility, labels, and exact anchor coordinates. Labels count from the top-left as row,column; players can toggle labels but cannot alter grid geometry or styling.</li>
+      <li><b>Background and vector maps</b> — the Layers pane selects the raster background and can add a filterable OpenFreeMap vector reference overlay for water, roads, rail, places, borders, chokepoints, airports, and ports.</li>
+      <li><b>Layer chip</b> (top bar) — click to open the Layers panel; shows the currently active layer. Top-bar panel buttons toggle their panel closed if it is already open; the panel X remains available too.</li>
     </ul>
 
     <h3 style="margin:14px 0 6px 0">Turns and the sync matrix</h3>
@@ -4965,10 +4833,10 @@ function helpPanelHTML() {
     <ul style="margin:4px 0 8px 18px;padding:0">
       <li><b>💾 Export Scenario</b> / <b>📂 Import Scenario</b> (top bar) — full state including turn history. Migrations run automatically on import.</li>
       <li><b>Export OOB + Templates</b> / <b>Import OOB + Templates</b> (Scenario → General → Data Management) — both sides' OOB plus referenced templates, APP-6 icon definitions / generated SVGs, and modifier library. Single-sided files trigger a side-chooser modal so you can drop e.g. an OPFOR file into the BLUFOR slot.</li>
-      <li><b>Export ${'{SIDE}'} OOB</b> / <b>Import</b> (Units → Order of Battle) — just that one side's OOB plus only its referenced templates.</li>
+      <li><b>Export ${'{SIDE}'} OOB</b> / <b>Import</b> (inside each OOB tab) — just that one side's OOB plus only its referenced templates.</li>
       <li><b>Export Graphics</b> / <b>Import Graphics</b> (Data Management) — side colours and order graphics as a reusable visual theme.</li>
       <li><b>Export Templates Only</b> / <b>Import Templates</b> (Data Management) — unit / marker / symbol / dice templates plus the modifier library, without any scenario state.</li>
-      <li><b>Export</b> / <b>Import Unit Template</b> (Units → Unit Templates) — share one unit template at a time. The export includes only the template and any modifier definitions it references.</li>
+      <li><b>Export</b> / <b>Import Unit Template</b> (Scenario → Unit Tpl) — share one unit template at a time. The export includes only the template and any modifier definitions it references.</li>
     </ul>
 
     <h3 style="margin:14px 0 6px 0">Dice</h3>
@@ -4979,8 +4847,7 @@ function helpPanelHTML() {
 
     <h3 style="margin:14px 0 6px 0">Keyboard shortcuts</h3>
     <ul style="margin:4px 0 8px 18px;padding:0;font-family:var(--mono);font-size:11px">
-      <li><b>U</b> — open the Units pane</li>
-      <li><b>K</b> / <b>Y</b> — place game marker / map symbol</li>
+      <li><b>U</b> / <b>K</b> / <b>Y</b> — place unit / game marker / map symbol</li>
       <li><b>V</b> — movement order tool</li>
       <li><b>L</b> / <b>P</b> / <b>C</b> — polyline / polygon / circle</li>
       <li><b>T</b> — text</li>
@@ -7022,7 +6889,11 @@ function showPlaceUnitModal(latlng) {
     deployOOBEntry(deploymentPending.entryId, latlng);
     deploymentPending = null;
     setTool('pan');
-    if (entry) refreshOOBEditor(entry.side);
+    // Refresh OOB panel if it's open
+    if (entry && document.getElementById('panelTitle')?.textContent === 'Scenario Builder') {
+      const c = document.getElementById('scenContent');
+      if (c) renderOOB(c, entry.side);
+    }
     return;
   }
 
@@ -7134,8 +7005,12 @@ function collectUndeployedUnits(list, side, pool, pathPrefix) {
 function confirmDeployFromOOB(lat, lng) {
   const entryId = document.getElementById('pu_oob').value;
   deployOOBEntry(entryId, L.latLng(lat, lng));
+  // If the Scenario Builder's OOB tab is open, refresh so Deploy→Withdraw flips
   const entry = findOOBEntry(entryId);
-  if (entry) refreshOOBEditor(entry.side);
+  if (entry && document.getElementById('panelTitle')?.textContent === 'Scenario Builder') {
+    const c = document.getElementById('scenContent');
+    if (c) renderOOB(c, entry.side);
+  }
 }
 
 function showPlaceUnitFromTemplateModal(latlng) {
@@ -7428,11 +7303,8 @@ function openPanel(type, ctx, options = {}) {
       if (state.viewRole === 'umpire') { title.textContent = 'Scenario Builder'; renderScenarioPanel(body); }
       else { title.textContent = 'Scenario'; renderScenarioInfoPanel(body); }
       break;
-    case 'layers': title.textContent = 'Map Layers'; renderLayersPanel(body); break;
-    case 'units':
-      title.textContent = state.viewRole === 'umpire' ? 'Units' : `${sideAbbr(state.viewRole)} units`;
-      renderUnitsPanel(body);
-      break;
+    case 'layers': title.textContent = 'Layers'; renderLayersPanel(body); break;
+    case 'units': title.textContent = 'Units'; renderUnitsPanel(body); break;
     case 'markers': title.textContent = 'Game Markers'; renderMarkersPanel(body); break;
     case 'turns': title.textContent = 'Turn History'; renderTurnsPanel(body); break;
     case 'dice': title.textContent = 'Dice Roller'; renderDicePanel(body); break;
@@ -7485,6 +7357,9 @@ function renderScenarioPanel(body) {
   body.innerHTML = `
     <div class="tabs" id="scenTabs">
       <button class="active" onclick="switchScenTab('general')">General</button>
+      <button onclick="switchScenTab('oob_bluefor')">OOB BLUFOR</button>
+      <button onclick="switchScenTab('oob_opfor')">OOB OPFOR</button>
+      <button onclick="switchScenTab('units')">Unit Tpl</button>
       <button onclick="switchScenTab('modifiers')">Modifiers</button>
       <button onclick="switchScenTab('markers')">Markers</button>
       <button onclick="switchScenTab('symbols')">Symbols</button>
@@ -7527,7 +7402,7 @@ function renderScenarioInfoGeneral(c) {
   const s = state.scenario || {};
   c.innerHTML = `<div class="section-head">General</div>
     ${readonlyFieldHTML('Scenario name', esc(s.name || ''))}
-    ${readonlyFieldHTML('Description', `<div class="orders-markdown">${renderMarkdownBasic(s.description || '')}</div>`)}
+    ${readonlyFieldHTML('Description', esc(s.description || ''))}
     ${readonlyFieldHTML('Start date/time', esc(s.startDateTime || ''))}
     ${readonlyFieldHTML('Turn duration (minutes)', esc(s.turnDurationMinutes ?? ''))}
     ${readonlyFieldHTML('Turn limit', s.turnLimit === 0 ? 'unlimited' : esc(s.turnLimit ?? ''))}
@@ -7589,11 +7464,14 @@ function renderScenarioInfoSymbols(c) {
 function switchScenTab(tab) {
   document.querySelectorAll('#scenTabs button').forEach(b => b.classList.remove('active'));
   const btns = document.querySelectorAll('#scenTabs button');
-  const tabs = ['general','modifiers','markers','symbols','dice'];
+  const tabs = ['general','oob_bluefor','oob_opfor','units','modifiers','markers','symbols','dice'];
   const idx = tabs.indexOf(tab);
   if (idx >= 0) btns[idx].classList.add('active');
   const c = document.getElementById('scenContent');
   if (tab === 'general') renderScenGeneral(c);
+  else if (tab === 'oob_bluefor') renderOOB(c, 'bluefor');
+  else if (tab === 'oob_opfor') renderOOB(c, 'opfor');
+  else if (tab === 'units') renderScenUnits(c);
   else if (tab === 'modifiers') renderScenModifiers(c);
   else if (tab === 'markers') renderScenMarkers(c);
   else if (tab === 'symbols') renderScenSymbols(c);
@@ -7606,9 +7484,7 @@ function renderScenGeneral(c) {
     <div class="field-group"><label>Scenario Name</label>
       <input type="text" id="sg_name" value="${esc(s.name)}" oninput="state.scenario.name=this.value"></div>
     <div class="field-group"><label>Description</label>
-      <textarea id="sg_desc" oninput="state.scenario.description=this.value;document.getElementById('sg_desc_preview').innerHTML=renderMarkdownBasic(this.value)" placeholder="Markdown supported">${esc(s.description)}</textarea>
-      <div style="font-size:10px;color:var(--text-dim);margin-top:3px">Markdown formatting supported.</div>
-      <div id="sg_desc_preview" class="orders-markdown" style="margin-top:6px">${renderMarkdownBasic(s.description || '')}</div></div>
+      <textarea id="sg_desc" oninput="state.scenario.description=this.value">${esc(s.description)}</textarea></div>
     <div class="field-group"><label>Start Date/Time</label>
       <input type="datetime-local" id="sg_dt" value="${s.startDateTime}" oninput="state.scenario.startDateTime=this.value;updateScenTimeDisplay()"></div>
     <div class="field-group"><label>Turn Duration (minutes)</label>
@@ -7854,7 +7730,7 @@ function moveOOBEntryTo(entryId, side, targetParentId, refresh = true) {
   }
   renderAllUnits();
   refreshUnitsPanelIfOpen();
-  if (refresh) refreshOOBEditor(side);
+  if (refresh) renderOOB(document.getElementById('scenContent'), side);
 }
 
 function reorderOOBEntry(entryId, side, delta) {
@@ -7865,7 +7741,7 @@ function reorderOOBEntry(entryId, side, delta) {
   if (next < 0 || next >= loc.list.length) return;
   const [entry] = loc.list.splice(loc.index, 1);
   loc.list.splice(next, 0, entry);
-  refreshOOBEditor(side);
+  renderOOB(document.getElementById('scenContent'), side);
 }
 
 function oobOrderButtonsHTML(entryId, side) {
@@ -8047,7 +7923,7 @@ const oobPanelCollapsed = new Set();
 function toggleOOBFormation(entryId, side) {
   if (oobPanelCollapsed.has(entryId)) oobPanelCollapsed.delete(entryId);
   else oobPanelCollapsed.add(entryId);
-  refreshOOBEditor(side);
+  renderOOB(document.getElementById('scenContent'), side);
 }
 
 function renderOOB(c, side) {
@@ -8185,7 +8061,7 @@ function showFormationModal(ctx) {
     renderFormationMapOverlays();
     refreshUnitsPanelIfOpen();
     syncMirrors();
-    refreshOOBEditor(ctx.side);
+    renderOOB(document.getElementById('scenContent'), ctx.side);
   };
 }
 
@@ -8224,7 +8100,7 @@ function confirmAddOOBUnit(side, parentId) {
   entry.app6Icon.app6.identity = app6IdentityForSide(side);
   regenerateApp6Icon(entry.app6Icon);
   addOOBEntry(side, selectedParent === '__root' ? null : selectedParent, entry);
-  refreshOOBEditor(side);
+  renderOOB(document.getElementById('scenContent'), side);
 }
 
 function editOOBEntry(id) {
@@ -8263,7 +8139,7 @@ function editOOBEntry(id) {
     <div class="section-head">Notes</div>
     <textarea oninput="findOOBEntry('${id}').notes=this.value">${esc(entry.notes||'')}</textarea>
     <div class="btn-row">
-      <button onclick="this.closest('.modal-overlay').remove();refreshOOBEditor('${entry.side}')">Close</button>
+      <button onclick="this.closest('.modal-overlay').remove();renderOOB(document.getElementById('scenContent'),'${entry.side}')">Close</button>
     </div>`);
 }
 
@@ -8302,7 +8178,7 @@ function confirmDeleteOOB(id, side) {
     if (!ok) return;
     withdrawOOBBranchDeployments(entry);
     removeOOBEntry(id, side);
-    refreshOOBEditor(side);
+    renderOOB(document.getElementById('scenContent'), side);
   });
 }
 
@@ -8320,7 +8196,7 @@ function withdrawOOBUnit(entryId) {
   confirmModal(`Withdraw ${entry.name} from the map? (Entry remains in OOB, ready to redeploy.)`).then(ok => {
     if (!ok) return;
     withdrawUnit(entry.unitId);
-    refreshOOBEditor(entry.side);
+    renderOOB(document.getElementById('scenContent'), entry.side);
   });
 }
 
@@ -8357,7 +8233,7 @@ function renderScenUnits(c) {
       <span class="meta">${esc(t.echelon||'?')} · ${maxSpd} km/h max</span>
       <button class="small" onclick="exportUnitTemplate('${t.id}')">Export</button>
       <button class="small" onclick="editUnitTemplate('${t.id}')">Edit</button>
-      <button class="small danger" onclick="confirmModal('Delete template?').then(ok=>{if(ok){state.unitTemplates=state.unitTemplates.filter(x=>x.id!=='${t.id}');switchUnitsAdminTab('templates')}})">×</button>
+      <button class="small danger" onclick="confirmModal('Delete template?').then(ok=>{if(ok){state.unitTemplates=state.unitTemplates.filter(x=>x.id!=='${t.id}');renderScenarioPanel(document.getElementById('panelBody'));switchScenTab('units')}})">×</button>
     </div>`;
   });
   html += `<div class="btn-row">
@@ -8393,7 +8269,7 @@ function editUnitTemplate(id, stateIdx) {
   if (stateIdx != null) _tmplEditStateIdx = stateIdx;
   if (_tmplEditStateIdx >= t.states.length) _tmplEditStateIdx = 0;
   const tp = `state.unitTemplates.find(x=>x.id==='${id}')`;
-  const c = document.getElementById('unitsAdminContent') || document.getElementById('scenContent');
+  const c = document.getElementById('scenContent');
   ensureTemplateApp6Icon(t);
 
   const stateOpts = t.states.map((s, i) =>
@@ -8405,7 +8281,7 @@ function editUnitTemplate(id, stateIdx) {
 
   let html = `
     <div class="btn-row">
-      <button class="small ghost" onclick="switchUnitsAdminTab('templates')">← Back</button>
+      <button class="small ghost" onclick="switchScenTab('units')">← Back</button>
       <button class="small" onclick="exportUnitTemplate('${id}')">Export Template</button>
     </div>
     <h3 style="margin:10px 0;color:var(--accent)">Edit Unit Template</h3>
@@ -9147,18 +9023,21 @@ function renderScenDice(c) {
 // ── LAYERS PANEL ─────────────────────────────────────────────────
 const layerObjectsExpanded = {};
 const layerGroupExpanded = {};
-const layersPanelSections = { scenario: true, map: true };
-function toggleLayersPanelSection(section) {
-  layersPanelSections[section] = !layersPanelSections[section];
-  renderLayersPanel(document.getElementById('panelBody'));
-}
-
 function renderLayersPanel(body) {
   ensureLayerModel();
   const role = state.viewRole;
   const isUmpire = role === 'umpire';
-  let html = `<div class="section-head" style="display:flex;align-items:center;gap:6px;cursor:pointer" onclick="toggleLayersPanelSection('scenario')"><span>${layersPanelSections.scenario?'▼':'▶'}</span><span>Scenario Layers</span></div>`;
-  if (layersPanelSections.scenario) state.layers.forEach((l, layerIndex) => {
+  const baseOptions = Object.entries(BASEMAPS).map(([id, cfg]) => `<option value="${id}" ${mapDisplay.baseMap===id?'selected':''}>${esc(cfg.name)}</option>`).join('');
+  let html = `<div class="section-head">Background Map</div>
+    <div class="field-group"><label>Raster background</label><select onchange="setBaseMap(this.value)">${baseOptions}</select></div>
+    <div class="list-item" style="display:block;margin-bottom:8px">
+      <label style="display:flex;align-items:center;justify-content:flex-start;gap:6px;text-align:left;width:max-content"><input type="checkbox" ${mapDisplay.vectorEnabled?'checked':''} onchange="setVectorOverlayEnabled(this.checked)"> OpenFreeMap vector overlay</label>
+      <div class="field-group row" style="margin:6px 0 2px"><div><label>Vector opacity</label><input type="range" min="0" max="1" step="0.05" value="${mapDisplay.vectorOpacity}" oninput="setVectorOverlayOpacity(this.value)"></div></div>
+      ${mapDisplay.vectorEnabled ? `<div class="btn-row" style="justify-content:flex-start"><button class="small ghost" onclick="setOpenFreeMapPreset('all')">Full</button><button class="small ghost" onclick="setOpenFreeMapPreset('military')">Reference</button><button class="small ghost" onclick="setOpenFreeMapPreset('none')">None</button></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:3px 8px;margin-top:5px">${OPENFREE_GROUPS.map(group => `<label style="display:flex;align-items:center;justify-content:flex-start;gap:5px;font-size:11px;text-align:left"><input type="checkbox" ${mapDisplay.referenceGroups[group.id]?'checked':''} onchange="setOpenFreeMapGroup('${group.id}',this.checked)"> ${esc(group.name)}</label>`).join('')}</div>` : ''}
+    </div>
+    <div class="section-head">Scenario Layers</div>`;
+  state.layers.forEach((l, layerIndex) => {
     const canSee = isUmpire || l.visibility === 'all' || l.visibility === role;
     if (!canSee) return;
     const visBadgeCls = 'vis-' + l.visibility;
@@ -9308,131 +9187,13 @@ function renderLayersPanel(body) {
       html += `</div>`;
     }
   });
-  if (layersPanelSections.scenario && isUmpire) {
-    html += `<div class="btn-row"><button onclick="createNewLayer()">+ Drawing Layer</button><button onclick="document.getElementById('scenarioGeoJSONInput').click()">Import GeoJSON</button></div>
-      <input type="file" id="scenarioGeoJSONInput" accept=".geojson,.json,application/geo+json,application/json" style="display:none" onchange="importGeoJSONLayer(event,'scenario')">`;
-  }
-  html += `<div class="section-head" style="display:flex;align-items:center;gap:6px;cursor:pointer;margin-top:10px" onclick="toggleLayersPanelSection('map')"><span>${layersPanelSections.map?'▼':'▶'}</span><span>Map Layers</span></div>`;
-  if (layersPanelSections.map) html += renderMapLayersGroup(isUmpire);
-  body.innerHTML = html;
-}
-
-function renderMapLayersGroup(isUmpire) {
-  ensureMapLayerModel();
-  const baseOptionsFor = selected => Object.entries(BASEMAPS).map(([id, cfg]) => `<option value="${id}" ${selected===id?'selected':''}>${esc(cfg.name)}</option>`).join('');
-  let html = '';
-  state.mapLayers.forEach((layer, index) => {
-    if (layer.type === 'hex' && !hexOverlayVisibilityAllows(layer)) return;
-    const expanded = !!layerObjectsExpanded[layer.id];
-    const typeLabel = layer.type === 'raster' ? 'raster' : layer.type === 'vector' ? 'vector' : layer.type === 'hex' ? 'hex' : 'GeoJSON';
-    const color = layer.color || (layer.type === 'raster' ? '#8a8a9a' : '#e94560');
-    const canDelete = isUmpire && ['hex','geojson'].includes(layer.type);
-    html += `<div class="layer-item" style="cursor:default">
-      <input type="checkbox" ${layer.visible?'checked':''} onchange="toggleMapLayerVisible('${layer.id}')">
-      <span class="layer-dot" style="background:${esc(color)}"></span>
-      <span class="name" style="flex:1">${esc(layer.name)}</span>
-      <span style="font-size:10px;color:var(--text-dim)">${typeLabel}</span>
-      ${['raster','hex','geojson'].includes(layer.type) ? `<button class="small" title="Show/hide layer details" onclick="layerObjectsExpanded['${layer.id}']=!layerObjectsExpanded['${layer.id}'];renderLayersPanel(document.getElementById('panelBody'))">${expanded?'▼':'▶'}</button>` : ''}
-      ${isUmpire ? `<button class="small" title="Move layer up" ${index===0?'disabled':''} onclick="moveMapLayer('${layer.id}',-1)">↑</button>
-      <button class="small" title="Move layer down" ${index===state.mapLayers.length-1?'disabled':''} onclick="moveMapLayer('${layer.id}',1)">↓</button>` : ''}
-      ${canDelete ? `<button class="small danger" onclick="deleteMapLayer('${layer.id}')">×</button>` : ''}
-    </div>`;
-    if (layer.type === 'vector' && isUmpire) {
-      html += `<div style="padding:3px 8px 6px 28px;display:flex;align-items:center;gap:8px"><label style="font-size:10px;color:var(--text-dim)">Colour</label><input type="color" value="${esc(layer.color || '#777777')}" onchange="updateMapLayer('${layer.id}','color',this.value)"></div>`;
-    } else if (layer.type === 'raster' && expanded) {
-      html += `<div style="padding:5px 8px 8px 28px">
-        <div class="field-group"><label>Raster map</label><select onchange="updateMapLayer('${layer.id}','baseMap',this.value)">${baseOptionsFor(layer.baseMap)}</select></div>
-        <div class="field-group"><label>Opacity (%)</label><input type="range" min="0" max="100" step="5" value="${Math.round((layer.opacity ?? 1)*100)}" oninput="updateMapLayer('${layer.id}','opacity',parseFloat(this.value)/100,false)"><span style="font-size:10px;color:var(--text-dim)">${Math.round((layer.opacity ?? 1)*100)}%</span></div>
-      </div>`;
-    } else if (layer.type === 'hex' && expanded) {
-      html += hexLayerControlsHtml(layer);
-    } else if (layer.type === 'geojson' && expanded && isUmpire) {
-      html += `<div style="padding:5px 8px 8px 28px">
-        <div class="field-group"><label>Name</label><input type="text" value="${esc(layer.name)}" onchange="updateMapLayer('${layer.id}','name',this.value)"></div>
-        <div class="field-group row"><div><label>Line colour</label><input type="color" value="${esc(layer.color || '#e94560')}" onchange="updateMapLayer('${layer.id}','color',this.value)"></div><div><label>Fill colour</label><input type="color" value="${esc(layer.fillColor || layer.color || '#e94560')}" onchange="updateMapLayer('${layer.id}','fillColor',this.value)"></div></div>
-      </div>`;
-    }
-  });
   if (isUmpire) {
     const polygons = hexOverlayPolygonCandidates();
-    html += `<div class="btn-row"><button onclick="createHexOverlayFromCurrentView()">+ Hex Layer</button><button onclick="document.getElementById('mapGeoJSONInput').click()">Import GeoJSON</button></div>
-      <input type="file" id="mapGeoJSONInput" accept=".geojson,.json,application/geo+json,application/json" style="display:none" onchange="importGeoJSONLayer(event,'map')">
+    html += `<div class="btn-row"><button onclick="createNewLayer()">+ Drawing Layer</button><button onclick="createHexOverlayFromCurrentView()">+ Hex Layer</button></div>
       ${polygons.length ? `<div class="btn-row"><select id="hexDrawingSelect" style="flex:1">${polygons.map(d => `<option value="${d.id}">${esc(d.properties?.label || d.type + ' ' + d.id.slice(-4))}</option>`).join('')}</select><button onclick="createHexOverlayFromDrawing()">+ Hex from Polygon</button></div>` : ''}`;
   }
-  html += `<div class="field-group" style="margin-top:8px"><label>Background colour</label><input type="color" value="${esc(state.mapBackgroundColor || '#d9dde3')}" onchange="setMapBackgroundColor(this.value)"></div>`;
-  if (isUmpire) html += `<div class="btn-row"><button class="small ghost" onclick="restoreMapLayerDefaults()">Restore scenario defaults</button></div>`;
-  return html;
-}
-
-function toggleMapLayerVisible(id) {
-  const layer = getMapLayer(id);
-  if (!layer) return;
-  layer.visible = !layer.visible;
-  renderAll();
-  refreshLayersPanelIfOpen();
-  syncMirrors();
-}
-
-function updateMapLayer(id, field, value, refreshPanel = true) {
-  if (state.viewRole !== 'umpire') return;
-  const layer = getMapLayer(id);
-  if (!layer) return;
-  layer[field] = value;
-  applyMapLayers();
-  renderHexOverlays();
-  if (refreshPanel) refreshLayersPanelIfOpen();
-  syncMirrors();
-}
-
-function moveMapLayer(id, delta) {
-  if (state.viewRole !== 'umpire') return;
-  const index = state.mapLayers.findIndex(layer => layer.id === id);
-  const next = Math.max(0, Math.min(state.mapLayers.length - 1, index + delta));
-  if (index < 0 || next === index) return;
-  const [layer] = state.mapLayers.splice(index, 1);
-  state.mapLayers.splice(next, 0, layer);
-  renderAll();
-  refreshLayersPanelIfOpen();
-  syncMirrors();
-}
-
-function deleteMapLayer(id) {
-  const layer = getMapLayer(id);
-  if (!layer || !['hex','geojson'].includes(layer.type)) return;
-  confirmModal(`Delete ${layer.name || 'this map layer'}?`).then(ok => {
-    if (!ok) return;
-    state.mapLayers = state.mapLayers.filter(item => item.id !== id);
-    renderAll();
-    refreshLayersPanelIfOpen();
-    syncMirrors();
-  });
-}
-
-function setMapBackgroundColor(color) {
-  if (state.viewRole !== 'umpire') return;
-  state.mapBackgroundColor = color;
-  applyMapBackgroundColor();
-  syncMirrors();
-}
-
-function restoreMapLayerDefaults() {
-  confirmModal('Restore the saved scenario defaults for background map layers? Layers added since the scenario was last loaded or saved will remain. Scenario drawing layers are not affected.').then(ok => {
-    if (!ok) return;
-    if (!scenarioMapLayerDefaults) captureScenarioMapLayerDefaults();
-    const defaults = cloneDeep(scenarioMapLayerDefaults.mapLayers || []);
-    const defaultIds = new Set(defaults.map(layer => layer.id));
-    let defaultIndex = 0;
-    const restored = state.mapLayers.map(layer => {
-      if (!defaultIds.has(layer.id)) return layer;
-      return defaults[defaultIndex++];
-    });
-    while (defaultIndex < defaults.length) restored.push(defaults[defaultIndex++]);
-    state.mapLayers = restored;
-    state.mapBackgroundColor = scenarioMapLayerDefaults.mapBackgroundColor || '#d9dde3';
-    renderAll();
-    refreshLayersPanelIfOpen();
-    syncMirrors();
-  });
+  html += `<p style="font-size:11px;color:var(--text-dim);margin-top:10px">Drawing and hex layers share one ordered stack. Click a drawing layer to make it active; expand \u25b6 for objects or hex settings.</p>`;
+  body.innerHTML = html;
 }
 
 function deleteDrawingGroup(ids) {
@@ -9586,7 +9347,6 @@ function editLayer(id) {
       <input type="color" id="el_color" value="${l.color}"></div>
     <div class="btn-row">
       <button onclick="saveLayerEdit('${id}');this.closest('.modal-overlay').remove()">Save</button>
-      <button class="ghost" onclick="exportScenarioLayerGeoJSON('${id}')">Export GeoJSON</button>
       <button onclick="this.closest('.modal-overlay').remove()">Cancel</button>
     </div>`);
 }
@@ -9780,48 +9540,9 @@ function renderFormationMapOverlays() {
 
 map.on('zoomend', renderFormationMapOverlays);
 
-let umpireUnitsTab = 'oob';
-
 function renderUnitsPanel(body) {
-  if (state.viewRole === 'umpire') {
-    renderUmpireUnitsPanel(body);
-    return;
-  }
-  renderPlayerUnitsPanel(body);
-}
-
-function renderUmpireUnitsPanel(body) {
-  body.innerHTML = `<div class="tabs" style="margin:-12px -14px 10px -14px">
-      <button class="${umpireUnitsTab==='oob'?'active':''}" onclick="switchUnitsAdminTab('oob')">Order of Battle</button>
-      <button class="${umpireUnitsTab==='templates'?'active':''}" onclick="switchUnitsAdminTab('templates')">Unit Templates</button>
-    </div><div id="unitsAdminContent"></div>`;
-  const content = document.getElementById('unitsAdminContent');
-  if (umpireUnitsTab === 'templates') {
-    renderScenUnits(content);
-  } else {
-    content.innerHTML = `<div id="unitsOob_bluefor"></div><div id="unitsOob_opfor" style="margin-top:16px"></div>`;
-    renderOOB(document.getElementById('unitsOob_bluefor'), 'bluefor');
-    renderOOB(document.getElementById('unitsOob_opfor'), 'opfor');
-  }
-}
-
-function switchUnitsAdminTab(tab) {
-  umpireUnitsTab = tab === 'templates' ? 'templates' : 'oob';
-  renderUnitsPanel(document.getElementById('panelBody'));
-}
-
-function refreshOOBEditor(side) {
-  const unitsTarget = document.getElementById('unitsOob_' + side);
-  if (unitsTarget) {
-    renderOOB(unitsTarget, side);
-    return;
-  }
-  const legacyTarget = document.getElementById('scenContent');
-  if (legacyTarget) renderOOB(legacyTarget, side);
-}
-
-function renderPlayerUnitsPanel(body) {
-  const sides = [state.viewRole];
+  // Sides visible to the current role. Umpire sees both; players see only their own.
+  const sides = state.viewRole === 'umpire' ? ['bluefor', 'opfor'] : [state.viewRole];
 
   // Suspected-enemy markers that aren't tied to an OOB entry: show in a flat section per side.
   let html = '';
@@ -9829,6 +9550,7 @@ function renderPlayerUnitsPanel(body) {
     const oob = state.oob[side] || [];
     const deployedInSide = state.units.filter(u => u.side === side && !u.isSuspectedMarker);
     const hasContent = oob.length > 0 || deployedInSide.length > 0;
+    html += `<div class="section-head" style="color:${side==='bluefor'?'var(--blue-side)':'var(--red-side)'}">${sideAbbr(side)}</div>`;
     if (!hasContent) {
       html += `<p style="color:var(--text-dim);font-size:12px;margin:4px 0 10px 0">No OOB entries or deployed units.</p>`;
       return;
@@ -10571,8 +10293,6 @@ function loadTurnSnapshot(idx) {
   state.markers = cloneDeep(snap.markers);
   state.drawings = cloneDeep(snap.drawings);
   if (snap.layers) state.layers = cloneDeep(snap.layers);
-  if (snap.mapLayers) state.mapLayers = cloneDeep(snap.mapLayers);
-  if (snap.mapBackgroundColor) state.mapBackgroundColor = snap.mapBackgroundColor;
   if (snap.hexOverlays) state.hexOverlays = cloneDeep(snap.hexOverlays);
   ensureLayerModel();
   state.movementOrders = cloneDeep(snap.movementOrders || []);
@@ -10628,8 +10348,6 @@ function confirmEndTurn() {
     markers: cloneDeep(state.markers),
     drawings: cloneDeep(state.drawings),
     layers: cloneDeep(state.layers),
-    mapLayers: cloneDeep(state.mapLayers),
-    mapBackgroundColor: state.mapBackgroundColor,
     movementOrders: cloneDeep(state.movementOrders),
     syncMatrix: cloneDeep(state.syncMatrix),
     sideOrders: cloneDeep(state.sideOrders)
@@ -10747,7 +10465,7 @@ function renderSyncPanel(body, side) {
       <button class="${side==='opfor'?'active':''}" onclick="openPanel('sync',{side:'opfor'})">OPFOR</button>
     </div>`;
   }
-  html += `<div class="section-head">${state.viewRole === 'umpire' ? sideAbbr(side) + ' Sync Matrix' : 'Sync Matrix'} — ${cols} turns</div>
+  html += `<div class="section-head">${sideAbbr(side)} Sync Matrix — ${cols} turns</div>
     <div class="btn-row" style="margin:0 0 6px 0">
       <button class="small ghost" onclick="toggleSyncMatrixCollapsed('${side}')">${collapsed ? 'Expand units' : 'Collapse units'}</button>
     </div>`;
@@ -10779,7 +10497,7 @@ function renderSyncPanel(body, side) {
       <p style="font-size:10px;color:var(--text-dim);margin-top:8px">Rows auto-generated from ${sideAbbr(side)} OOB formations. Drag panel edge to widen.</p>`;
   }
   const orders = state.sideOrders[side] || '';
-  html += `<div class="section-head" style="margin-top:14px">${state.viewRole === 'umpire' ? sideAbbr(side) + ' Plans' : 'Orders'}</div>`;
+  html += `<div class="section-head" style="margin-top:14px">${sideAbbr(side)} Plans</div>`;
   if (state.viewRole === 'umpire') {
     html += `<div class="field-group">
       <label>Plans (Markdown supported)</label>
@@ -10803,7 +10521,6 @@ function setSyncCell(side, rowId, turn, value) {
 // EXPORT / IMPORT
 // ═══════════════════════════════════════════════════════════════════
 function exportScenario() {
-  captureScenarioMapLayerDefaults();
   const data = cloneDeep(state);
   const umpireScale = state.viewUnitIconScales?.umpire || state.scenario.unitIconScale || 0.3;
   data.scenario.unitIconScale = umpireScale;
@@ -10820,10 +10537,6 @@ function importScenario(event) {
       const data = JSON.parse(e.target.result);
       if (!data.version) { alert('Invalid file'); return; }
       Object.assign(state, data);
-      // Fields absent from older scenarios must not inherit values from whichever
-      // scenario happened to be open before import.
-      if (!Array.isArray(data.mapLayers)) state.mapLayers = [];
-      if (!data.mapBackgroundColor) state.mapBackgroundColor = '#d9dde3';
       // Migration: scenarios saved before the modifier system gain the default library
       // and every unit gets an empty .modifiers array so rendering code that iterates
       // over it doesn't need a null guard on every access.
@@ -10848,8 +10561,7 @@ function importScenario(event) {
       }
       ensureSideOrders();
       ensureLayerModel();
-      captureScenarioMapLayerDefaults();
-      state.version = 11;
+      state.version = 10;
       resetViewUnitIconScalesFromScenario();
       migrateApp6State();
       applySideColorsToDOM();
@@ -11028,7 +10740,8 @@ function importUnitTemplate(event) {
         const modsAdded = mergeImportedModifierLibrary(data.modifiers || []);
         migrateApp6State();
         renderAllUnits();
-        if (currentPanel.type === 'units' && state.viewRole === 'umpire') switchUnitsAdminTab('templates');
+        const title = document.getElementById('panelTitle');
+        if (title && title.textContent === 'Scenario Builder') switchScenTab('units');
         const parts = [];
         if (stats.added) parts.push(`${stats.added} added`);
         if (stats.replaced) parts.push(`${stats.replaced} replaced`);
@@ -11265,7 +10978,10 @@ function importSideOOBToTarget(event, targetSide) {
         normalizeModifierLibrary();
         migrateApp6State();
         renderAllUnits();
-        refreshOOBEditor(targetSide);
+        const title = document.getElementById('panelTitle');
+        if (title && title.textContent === 'Scenario Builder') {
+          renderScenarioPanel(document.getElementById('panelBody'));
+        }
         alert(`${sideAbbr(targetSide)} OOB imported.`);
       });
     } catch (err) { alert('Error: ' + err.message); }
@@ -11341,217 +11057,6 @@ function askMergeOrReplace() {
   });
 }
 
-function safeFilenamePart(value, fallback = 'layer') {
-  const cleaned = String(value || '').trim().replace(/[^a-zA-Z0-9._-]+/g, '_').replace(/^_+|_+$/g, '');
-  return cleaned || fallback;
-}
-
-function drawingToGeoJSONFeature(drawing) {
-  const props = Object.assign({}, drawing.properties || {}, {
-    drawingType: drawing.type,
-    style: cloneDeep(drawing.style || {}),
-    visible: drawing.visible !== false
-  });
-  if (drawing.type === 'polyline') {
-    return { type: 'Feature', properties: props, geometry: { type: 'LineString', coordinates: (drawing.geometry.points || []).map(point => [point[1], point[0]]) } };
-  }
-  if (drawing.type === 'polygon') {
-    const ring = (drawing.geometry.points || []).map(point => [point[1], point[0]]);
-    if (ring.length && (ring[0][0] !== ring[ring.length-1][0] || ring[0][1] !== ring[ring.length-1][1])) ring.push([...ring[0]]);
-    return { type: 'Feature', properties: props, geometry: { type: 'Polygon', coordinates: [ring] } };
-  }
-  if (drawing.type === 'circle') {
-    props.radiusM = drawing.geometry.radius;
-    return { type: 'Feature', properties: props, geometry: { type: 'Point', coordinates: [drawing.geometry.center[1], drawing.geometry.center[0]] } };
-  }
-  if (drawing.geometry?.latlng) {
-    return { type: 'Feature', properties: props, geometry: { type: 'Point', coordinates: [drawing.geometry.latlng[1], drawing.geometry.latlng[0]] } };
-  }
-  return null;
-}
-
-function exportScenarioLayerGeoJSON(id) {
-  const layer = getLayer(id);
-  if (!layer) return;
-  const features = state.drawings.filter(drawing => drawing.layerId === id).map(drawingToGeoJSONFeature).filter(Boolean);
-  const data = { type: 'FeatureCollection', name: layer.name, features };
-  const filename = `${safeFilenamePart(state.scenario.name,'scenario')}_turn_${state.turnNumber}_${safeFilenamePart(layer.name)}.geojson`;
-  downloadJSON(data, filename);
-}
-
-function exportHexLayerGeoJSON(id) {
-  const layer = getMapLayer(id);
-  if (!layer || layer.type !== 'hex') return;
-  const result = hexOverlayCells(layer);
-  const cells = result.cells || [];
-  assignHexRowColumn(cells);
-  const features = cells.map(cell => {
-    const ring = cell.vertices.map(point => [point[1], point[0]]);
-    ring.push([...ring[0]]);
-    return {
-      type: 'Feature',
-      properties: { row: cell.row, column: cell.column, diameterKm: layer.diameterKm, diameterType: layer.diameterType, orientation: layer.orientation },
-      geometry: { type: 'Polygon', coordinates: [ring] }
-    };
-  });
-  const data = { type: 'FeatureCollection', name: layer.name, features };
-  const filename = `${safeFilenamePart(state.scenario.name,'scenario')}_hex_grid_${safeFilenamePart(layer.name)}.geojson`;
-  downloadJSON(data, filename);
-}
-
-function featureToDrawing(feature, layerId) {
-  if (!feature?.geometry) return null;
-  const props = cloneDeep(feature.properties || {});
-  const style = cloneDeep(props.style || {});
-  const visible = props.visible !== false;
-  delete props.style;
-  delete props.visible;
-  const geometry = feature.geometry;
-  if (geometry.type === 'LineString') {
-    return { id: uid(), layerId, type: 'polyline', visible, style, properties: props, geometry: { points: geometry.coordinates.map(point => [point[1], point[0]]) } };
-  }
-  if (geometry.type === 'Polygon' && geometry.coordinates?.[0]) {
-    const points = geometry.coordinates[0].map(point => [point[1], point[0]]);
-    if (points.length > 1 && points[0][0] === points[points.length-1][0] && points[0][1] === points[points.length-1][1]) points.pop();
-    return { id: uid(), layerId, type: 'polygon', visible, style, properties: props, geometry: { points } };
-  }
-  if (geometry.type === 'Point') {
-    const latlng = [geometry.coordinates[1], geometry.coordinates[0]];
-    if (props.drawingType === 'text' || props.drawingType === 'symbol') return { id: uid(), layerId, type: props.drawingType, visible, style, properties: props, geometry: { latlng } };
-    return { id: uid(), layerId, type: 'circle', visible, style, properties: props, geometry: { center: latlng, radius: parseFloat(props.radiusM) || 25 } };
-  }
-  return null;
-}
-
-function validateGeoJSONPosition(position, path) {
-  if (!Array.isArray(position) || position.length < 2) return `${path} must contain longitude and latitude.`;
-  const longitude = Number(position[0]);
-  const latitude = Number(position[1]);
-  if (!Number.isFinite(longitude) || !Number.isFinite(latitude)) return `${path} contains non-numeric coordinates.`;
-  if (longitude < -180 || longitude > 180) return `${path} longitude ${longitude} is outside -180 to 180.`;
-  if (latitude < -90 || latitude > 90) return `${path} latitude ${latitude} is outside -90 to 90.`;
-  return null;
-}
-
-function validateGeoJSONLine(coordinates, path, minimum) {
-  if (!Array.isArray(coordinates) || coordinates.length < minimum) return `${path} requires at least ${minimum} positions.`;
-  for (let i = 0; i < coordinates.length; i++) {
-    const issue = validateGeoJSONPosition(coordinates[i], `${path}[${i}]`);
-    if (issue) return issue;
-  }
-  return null;
-}
-
-function validateGeoJSONGeometry(geometry, path = 'geometry') {
-  if (!geometry || typeof geometry !== 'object') return `${path} is missing or invalid.`;
-  const c = geometry.coordinates;
-  if (geometry.type === 'Point') return validateGeoJSONPosition(c, `${path}.coordinates`);
-  if (geometry.type === 'MultiPoint') return validateGeoJSONLine(c, `${path}.coordinates`, 1);
-  if (geometry.type === 'LineString') return validateGeoJSONLine(c, `${path}.coordinates`, 2);
-  if (geometry.type === 'MultiLineString') {
-    if (!Array.isArray(c) || !c.length) return `${path}.coordinates requires at least one line.`;
-    for (let i = 0; i < c.length; i++) {
-      const issue = validateGeoJSONLine(c[i], `${path}.coordinates[${i}]`, 2);
-      if (issue) return issue;
-    }
-    return null;
-  }
-  const validatePolygon = (rings, polygonPath) => {
-    if (!Array.isArray(rings) || !rings.length) return `${polygonPath} requires at least one ring.`;
-    for (let i = 0; i < rings.length; i++) {
-      const issue = validateGeoJSONLine(rings[i], `${polygonPath}[${i}]`, 4);
-      if (issue) return issue;
-      const first = rings[i][0], last = rings[i][rings[i].length - 1];
-      if (first[0] !== last[0] || first[1] !== last[1]) return `${polygonPath}[${i}] is not closed; its first and last positions must match.`;
-    }
-    return null;
-  };
-  if (geometry.type === 'Polygon') return validatePolygon(c, `${path}.coordinates`);
-  if (geometry.type === 'MultiPolygon') {
-    if (!Array.isArray(c) || !c.length) return `${path}.coordinates requires at least one polygon.`;
-    for (let i = 0; i < c.length; i++) {
-      const issue = validatePolygon(c[i], `${path}.coordinates[${i}]`);
-      if (issue) return issue;
-    }
-    return null;
-  }
-  if (geometry.type === 'GeometryCollection') {
-    if (!Array.isArray(geometry.geometries) || !geometry.geometries.length) return `${path}.geometries requires at least one geometry.`;
-    for (let i = 0; i < geometry.geometries.length; i++) {
-      const issue = validateGeoJSONGeometry(geometry.geometries[i], `${path}.geometries[${i}]`);
-      if (issue) return issue;
-    }
-    return null;
-  }
-  return `${path}.type "${geometry.type || 'missing'}" is not a supported GeoJSON geometry.`;
-}
-
-function geoJSONFeatureLabel(feature, index) {
-  const name = feature?.properties?.name || feature?.properties?.label || feature?.id;
-  return `Feature ${index + 1}${name != null && String(name).trim() ? ` (${String(name).trim()})` : ''}`;
-}
-
-function showGeoJSONImportWarnings(name, importedCount, issues) {
-  if (!issues.length) return;
-  const shown = issues.slice(0, 12);
-  const remainder = issues.length - shown.length;
-  alert(`Imported ${importedCount} feature(s) into "${name}". Skipped ${issues.length} feature(s):\n\n- ${shown.join('\n- ')}${remainder ? `\n- ...and ${remainder} more.` : ''}`);
-}
-
-function importGeoJSONLayer(event, target) {
-  const file = event.target.files?.[0];
-  if (!file) return;
-  const reader = new FileReader();
-  reader.onload = loadEvent => {
-    try {
-      const data = JSON.parse(loadEvent.target.result);
-      if (!data || !['FeatureCollection','Feature'].includes(data.type)) {
-        throw new Error(`Top-level type must be "FeatureCollection" or "Feature"; found "${data?.type || 'missing'}".`);
-      }
-      const features = data.type === 'FeatureCollection' ? data.features : [data];
-      if (!Array.isArray(features) || !features.length) throw new Error('The file contains no GeoJSON features.');
-      const name = data.name || file.name.replace(/\.(geo)?json$/i, '') || 'Imported GeoJSON';
-      const issues = [];
-      const supportedScenarioTypes = new Set(['Point','LineString','Polygon']);
-      const validFeatures = features.filter((feature, index) => {
-        const label = geoJSONFeatureLabel(feature, index);
-        if (!feature || feature.type !== 'Feature') {
-          issues.push(`${label}: item type must be "Feature".`);
-          return false;
-        }
-        const geometryIssue = validateGeoJSONGeometry(feature.geometry);
-        if (geometryIssue) {
-          issues.push(`${label}: ${geometryIssue}`);
-          return false;
-        }
-        if (target === 'scenario' && !supportedScenarioTypes.has(feature.geometry.type)) {
-          issues.push(`${label}: ${feature.geometry.type} cannot be converted to a scenario drawing. Supported types are Point, LineString, and Polygon.`);
-          return false;
-        }
-        return true;
-      });
-      if (!validFeatures.length) throw new Error(`No importable features were found:\n- ${issues.slice(0, 12).join('\n- ')}`);
-      if (target === 'scenario') {
-        const layer = addLayer(name, 'all', '#e94560', 'umpire', 'drawing');
-        const drawings = validFeatures.map(feature => featureToDrawing(feature, layer.id)).filter(Boolean);
-        state.drawings.push(...drawings);
-        state.currentLayerId = layer.id;
-        updateCurrentLayerDisplay();
-      } else {
-        state.mapLayers.unshift({ id: uid(), type: 'geojson', name, visible: true, opacity: 1, fillOpacity: 0.15, color: '#e94560', fillColor: '#e94560', geojson: { type: 'FeatureCollection', features: validFeatures } });
-      }
-      renderAll();
-      refreshLayersPanelIfOpen();
-      syncMirrors();
-      showGeoJSONImportWarnings(name, validFeatures.length, issues);
-    } catch (error) {
-      alert('GeoJSON import failed: ' + error.message);
-    }
-  };
-  reader.readAsText(file);
-  event.target.value = '';
-}
-
 function downloadJSON(data, filename) {
   const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
@@ -11566,7 +11071,6 @@ function downloadJSON(data, filename) {
 // FULL RERENDER
 // ═══════════════════════════════════════════════════════════════════
 function renderAll() {
-  applyMapLayers();
   renderHexOverlays();
   renderDrawings();
   renderAllUnits();
@@ -11629,7 +11133,7 @@ document.addEventListener('keydown', e => {
       closePanel();
       break;
     }
-    case 'u': case 'U': openPanel('units'); break;
+    case 'u': case 'U': setTool('unit'); break;
     case 'v': case 'V': setTool('move'); break;
     case 'k': case 'K': setTool('marker'); break;
     case 'y': case 'Y': setTool('symbol'); break;
@@ -11704,7 +11208,6 @@ function init() {
   ensureSideOrders();
   state.layers = cloneDeep(DEFAULT_LAYERS);
   ensureLayerModel();
-  captureScenarioMapLayerDefaults();
   migrateApp6State();
   state.currentLayerId = state.layers[0].id;
   updateCurrentLayerDisplay();
@@ -11717,7 +11220,7 @@ function init() {
   updateIconScaleControls();
 }
 
-const APP_VERSION = 'v081';
+const APP_VERSION = 'v079';
 
 function setupPanelResize() {
   const handle = document.getElementById('panelResizeHandle');
@@ -11758,3 +11261,5 @@ init();
 </script>
 </body>
 </html>
+
+
