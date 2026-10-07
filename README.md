@@ -6,7 +6,7 @@ real geography. Designed with
 in mind, but the data model is generic enough for most platoon- to
 battalion-level rules.
 
-Current version: **v081** (beta).
+Current version: **v082** (beta).
 
 Project repository: <https://github.com/jmkorhonen/bg_clasher>
 
@@ -72,10 +72,15 @@ but I need outside eyes on:
   coordinates, flat/point measurement and orientation, zoom-aware line weight,
   and top-left row,column labels. Players may toggle labels but only the umpire
   can change grid geometry or styling.
-- **Map-layer controls** for one selectable raster background plus independent,
+- **Map-layer controls** for one selectable background map plus independent,
   reorderable OpenFreeMap vector categories (water, roads, rail, places,
   borders, chokepoints, airports, ports, and other reference detail). Map and
   scenario groups can import GeoJSON; drawing and hex layers can export it.
+- **OpenFreeMap backgrounds**: quiet Positron by default, detailed Liberty as
+  an option, with no API key. OpenTopoMap, OSM Humanitarian and Esri Satellite
+  remain available as raster alternatives. Older saved CARTO Positron/Voyager
+  selections migrate to OpenFreeMap Positron/Liberty without changing layer
+  order, visibility or opacity.
 - **Scenario map defaults** captured on load or export. Restore them without
   deleting later-added map layers or changing Scenario Layers.
 - **Side Colours** — configurable BLUFOR/OPFOR colours for order arrows,
@@ -89,7 +94,7 @@ but I need outside eyes on:
   intended to prevent accidental role changes, nothing more.
 
 ### Map and tools
-- **Leaflet-based** map (OpenStreetMap tiles by default). Zoom freely; icons
+- **Leaflet-based** map (OpenFreeMap Positron by default). Zoom freely; icons
   and labels scale proportionally.
 - **Unit placement** via Order of Battle Deploy controls in the Units pane.
   Units get an APP-6 tactical icon (auto-generated or fetched from a
@@ -218,11 +223,14 @@ are all welcome too.
 
 ### Architecture
 
-The whole app is a **single self-contained HTML file** (~570 KB for v081).
+The whole app is a **single self-contained HTML file** (~570 KB for v082).
 Opening the file:
 
 - Loads Leaflet 1.9 and Leaflet.Draw from `unpkg.com` CDNs.
-- Tile layer points at OpenStreetMap by default. No API keys required.
+- The default background uses OpenFreeMap vector tiles with the full Positron
+  style via MapLibre. No API key required. Tiles require network access;
+  OpenFreeMap rendering requires WebGL. The Background map selector offers
+  raster alternatives for browsers without WebGL.
 - Runs entirely in the browser. No backend, no persistent store beyond the
   files you export. This is intentional: it makes the tool easy to email,
   archive, and run offline (once cached).
@@ -244,8 +252,10 @@ All game state lives in a single top-level `state` object with roughly:
 - `state.movementOrders` — pending per-unit movement orders.
 - `state.layers` / `state.drawings` — scenario drawings organised into layers
   with visibility and edit-rights flags.
-- `state.mapLayers` / `state.mapBackgroundColor` — ordered raster, vector,
+- `state.mapLayers` / `state.mapBackgroundColor` — ordered background, vector,
   GeoJSON, and geodesic hex layers plus the map background colour.
+  State version 12 migrates the legacy `raster` background type to `basemap`
+  and replaces retired CARTO selections while retaining saved layer IDs.
 - `state.turnHistory` — snapshots taken at each End Turn.
 - `state.syncMatrix` / `sideOrders` — per-side planning matrix contents and
   Markdown plans text.
@@ -308,8 +318,9 @@ keep working:
 - [milsymbol](https://github.com/spatialillusions/milsymbol) — APP-6 unit
   symbol generation.
 - [MapLibre GL JS](https://maplibre.org/maplibre-gl-js/docs/) with the
-  Leaflet MapLibre adapter — OpenFreeMap vector reference layers.
-- OpenStreetMap raster tiles (no key).
+  Leaflet MapLibre adapter — OpenFreeMap backgrounds and vector reference layers.
+- [OpenFreeMap](https://openfreemap.org/) vector tiles and styles (no key).
+- Optional OpenTopoMap, OSM Humanitarian and Esri Satellite raster tiles.
 - Optional: user's own icon repo (GitHub or local folder).
 
 No build step, no package.json, no framework. The rendering code is plain
@@ -390,8 +401,9 @@ Third-party components retain their own licences:
 
 - Leaflet — BSD 2-Clause
 - Leaflet.Draw — MIT
-- OpenStreetMap tiles — ODbL (attribution required on shared screenshots:
-  "© OpenStreetMap contributors")
+- OpenFreeMap backgrounds use OpenMapTiles and OpenStreetMap data. Preserve
+  the displayed OpenFreeMap, OpenMapTiles and OpenStreetMap attribution when
+  sharing screenshots; raster alternatives display their own attribution.
 
 ---
 

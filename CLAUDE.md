@@ -8,7 +8,7 @@ Context file for agentic coding tools (Claude Code reads `CLAUDE.md`, Codex read
 A personal, browser-based wargame map tool built around the *Battlegroup Clash*
 ruleset, used live with playtesters. It is a **single self-contained HTML file**
 with no backend or build step. Built on Leaflet.js + Leaflet.Draw, with milsymbol
-for APP-6 icons and MapLibre/OpenFreeMap for optional vector reference layers.
+for APP-6 icons and MapLibre/OpenFreeMap for backgrounds and vector reference layers.
 Publicly hosted via GitHub Pages.
 
 - Repo: `https://github.com/jmkorhonen/bg_clasher`
@@ -56,7 +56,8 @@ Navigate the code by the banner comments (`// ── SECTION ──`), not line 
 since the file is re-versioned often. Major sections:
 
 - **State + default config/templates** — top of the `<script>`.
-- **Map + map layers** — `L.map(...)`; one selected raster background plus
+- **Map + map layers** — `L.map(...)`; one selected background map (OpenFreeMap
+  Positron by default, Liberty or raster alternatives available) plus
   independently ordered OpenFreeMap vector categories, imported GeoJSON, and
   geodesic hex grids live in `state.mapLayers`.
 - **Unit / Order / Modifier systems** — core game objects and their APP-6-style rendering.
@@ -73,6 +74,13 @@ No localStorage autosave. State is saved/loaded by **JSON file export/import**
 (`Blob` download / `FileReader` upload). Scenario/OOB/templates are included in the
 export. When changing the `state` shape, bump `state.version` and handle migration
 on import.
+
+State version 12 uses `type: 'basemap'` for the selected background. Legacy
+`raster` layers migrate in `ensureMapLayerModel()`; CARTO Positron/Voyager map
+to OpenFreeMap Positron/Liberty. Preserve IDs, ordering, visibility and opacity.
+OpenFreeMap uses full styles for backgrounds, not the recoloured reference
+categories. Keep its active WebGL renderer alive across ordinary rerenders.
+It requires network access and WebGL but no API key; do not restore CARTO URLs.
 
 Background-map scenario defaults are captured in memory when a scenario is
 created, imported, or exported. "Restore scenario defaults" restores those

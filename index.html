@@ -1285,7 +1285,7 @@ function updateWeatherDisplay() {
 // STATE
 // ═══════════════════════════════════════════════════════════════════
 const state = {
-  version: 11,
+  version: 12,
   scenario: {
     name: 'New Scenario',
     description: '',
@@ -1738,17 +1738,8 @@ const VerticalScale = L.Control.extend({
 });
 new VerticalScale().addTo(map);
 
-// Background maps and OpenFreeMap reference overlay. Controls live in the Layers panel.
-const cartoVoyager = L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
-  attribution: '© OpenStreetMap contributors © CARTO',
-  subdomains: 'abcd', maxZoom: 19
-});
-
-const cartoPositron = L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
-  attribution: '© OpenStreetMap contributors © CARTO',
-  subdomains: 'abcd', maxZoom: 19
-});
-
+// Background maps and OpenFreeMap reference overlays. Controls live in the Layers panel.
+const OPENFREE_ATTRIBUTION = '<a href="https://openfreemap.org/" target="_blank" rel="noopener">OpenFreeMap</a> | <a href="https://openmaptiles.org/" target="_blank" rel="noopener">OpenMapTiles</a> | &copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap contributors</a>';
 const topoLayer = L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
   attribution: '© OpenStreetMap contributors, SRTM | OpenTopoMap',
   maxZoom: 17
@@ -1765,8 +1756,8 @@ const osmHot = L.tileLayer('https://{s}.tile.openstreetmap.fr/hot/{z}/{x}/{y}.pn
 });
 
 const BASEMAPS = {
-  voyager: { name: 'CartoDB Voyager', layer: cartoVoyager },
-  positron: { name: 'CartoDB Positron', layer: cartoPositron },
+  openfree_positron: { name: 'OpenFreeMap Positron', style: 'https://tiles.openfreemap.org/styles/positron' },
+  openfree_liberty: { name: 'OpenFreeMap Liberty', style: 'https://tiles.openfreemap.org/styles/liberty' },
   topo: { name: 'OpenTopoMap', layer: topoLayer },
   hot: { name: 'OSM Humanitarian', layer: osmHot },
   esri: { name: 'Esri Satellite', layer: esriImagery }
@@ -1801,13 +1792,28 @@ function defaultMapLayers() {
         color: OPENFREE_DEFAULT_COLORS[id] || '#777777'
       };
     }),
-    { id: 'map_raster', type: 'raster', name: 'Raster map', visible: true, opacity: 1, baseMap: 'voyager' }
+    { id: 'map_raster', type: 'basemap', name: 'Background map', visible: true, opacity: 1, baseMap: 'openfree_positron' }
   ];
 }
 
 const vectorLayerRuntime = new Map();
 const geoJsonLayerRuntime = new Map();
 let scenarioMapLayerDefaults = null;
+let basemapUnavailableWarned = false;
+let basemapWebGLAvailable = null;
+
+function canRenderOpenFreeMap() {
+  if (!window.maplibregl || !L.maplibreGL) return false;
+  if (basemapWebGLAvailable == null) {
+    try {
+      const canvas = document.createElement('canvas');
+      const gl = canvas.getContext('webgl2') || canvas.getContext('webgl');
+      basemapWebGLAvailable = !!gl;
+      gl?.getExtension('WEBGL_lose_context')?.loseContext();
+    } catch (_) { basemapWebGLAvailable = false; }
+  }
+  return basemapWebGLAvailable;
+}
 
 function getMapLayer(id) { return (state.mapLayers || []).find(layer => layer.id === id); }
 function mapLayerPaneName(layerOrId) {
@@ -1822,7 +1828,15 @@ function ensureMapLayerModel() {
     if (layer.visible == null) layer.visible = true;
     if (layer.opacity == null) layer.opacity = 1;
     if (layer.type === 'vector' && !layer.color) layer.color = OPENFREE_DEFAULT_COLORS[layer.group] || '#777777';
-    if (layer.type === 'raster' && !layer.baseMap) layer.baseMap = 'voyager';
+    // Keep legacy layer IDs, order, visibility and opacity when replacing CARTO.
+    if (layer.type === 'raster') {
+      layer.type = 'basemap';
+      if (layer.name === 'Raster map') layer.name = 'Background map';
+    }
+    if (layer.type === 'basemap') {
+      if (layer.baseMap === 'voyager') layer.baseMap = 'openfree_liberty';
+      if (layer.baseMap === 'positron' || !BASEMAPS[layer.baseMap]) layer.baseMap = 'openfree_positron';
+    }
     if (layer.type === 'hex') {
       if (!layer.fillColor) layer.fillColor = layer.color || '#e94560';
       if (!layer.diameterType) layer.diameterType = 'point';
@@ -1857,15 +1871,33 @@ function applyMapLayers() {
   ensureMapLayerModel();
   ensureMapLayerPanes();
   applyMapBackgroundColor();
+  const background = state.mapLayers.find(layer => layer.type === 'basemap');
+  const base = background?.visible ? BASEMAPS[background.baseMap] : null;
   Object.values(BASEMAPS).forEach(cfg => {
-    if (map.hasLayer(cfg.layer)) map.removeLayer(cfg.layer);
+    if (cfg !== base && cfg.layer && map.hasLayer(cfg.layer)) map.removeLayer(cfg.layer);
   });
-  const raster = state.mapLayers.find(layer => layer.type === 'raster');
-  if (raster?.visible) {
-    const base = BASEMAPS[raster.baseMap] || BASEMAPS.voyager;
-    base.layer.options.pane = mapLayerPaneName(raster);
-    setLayerOpacity(base.layer, raster.opacity ?? 1);
-    base.layer.addTo(map);
+  if (base) {
+    if (!base.layer && base.style) {
+      if (canRenderOpenFreeMap()) {
+        base.layer = L.maplibreGL({
+          style: base.style,
+          attributionControl: { customAttribution: OPENFREE_ATTRIBUTION },
+          interactive: false,
+          pane: mapLayerPaneName(background)
+        });
+      } else if (!basemapUnavailableWarned) {
+        basemapUnavailableWarned = true;
+        setTimeout(() => showInfoToast('OpenFreeMap needs WebGL and MapLibre. Choose a raster alternative in Map Layers &gt; Background map if unavailable.'), 0);
+      }
+    }
+    if (base.layer) {
+      const pane = mapLayerPaneName(background);
+      if (base.layer.options.pane !== pane && map.hasLayer(base.layer)) map.removeLayer(base.layer);
+      base.layer.options.pane = pane;
+      // Keep the active WebGL renderer alive through ordinary game rerenders.
+      if (!map.hasLayer(base.layer)) base.layer.addTo(map);
+      setLayerOpacity(base.layer, background.opacity ?? 1);
+    }
   }
 
   const liveVectorIds = new Set();
@@ -1876,7 +1908,7 @@ function applyMapLayers() {
         runtime = L.maplibreGL({
           style: 'https://tiles.openfreemap.org/styles/liberty',
           opacity: entry.opacity ?? 1,
-          attributionControl: { customAttribution: '&copy; OpenStreetMap contributors &copy; OpenMapTiles | OpenFreeMap' },
+          attributionControl: { customAttribution: OPENFREE_ATTRIBUTION },
           interactive: false,
           pane: mapLayerPaneName(entry)
         });
@@ -4923,7 +4955,7 @@ function helpPanelHTML() {
     <ul style="margin:4px 0 8px 18px;padding:0">
       <li>Continuous drawing — after finishing one shape the tool stays active for the next.</li>
       <li><b>Snap toolbar</b> — toggles angle and length snapping while drawing. Re-click the snap buttons to change the step.</li>
-      <li>The <b>Map Layers</b> pane separates ordered Scenario Layers from ordered Map Layers. Drawing layers stay in Scenario Layers; raster, vector, GeoJSON, and geodesic hex layers are in Map Layers.</li>
+      <li>The <b>Map Layers</b> pane separates ordered Scenario Layers from ordered Map Layers. Drawing layers stay in Scenario Layers; background maps, vector reference overlays, GeoJSON, and geodesic hex layers are in Map Layers.</li>
       <li>Clicks on units or markers pass through to the drawing tool so you can start lines, circles, or rings on top of existing icons.</li>
     </ul>
 
@@ -4941,7 +4973,7 @@ function helpPanelHTML() {
       <li><b>Bottom icon scale slider</b> — uses side-specific infantry icons as size examples. Scale is remembered per view role; scenario export stores the umpire's scale and scenario import applies it to all roles.</li>
       <li><b>Drag crosshair</b> — marks the exact map centre only while the map is being dragged.</li>
       <li><b>Hex layers</b> — create a geodesic grid over the current map view or a drawn polygon. Set real-world diameter, orientation, separate line/fill styling, visibility, labels, and exact anchor coordinates. Labels count from the top-left as row,column; players can toggle labels but cannot alter grid geometry or styling.</li>
-      <li><b>Raster and vector maps</b> — Raster map selects one tile background. OpenFreeMap reference categories are independent, reorderable vector layers with visibility and colour controls.</li>
+      <li><b>Background and reference maps</b> — Background map selects one full map: OpenFreeMap Positron (quiet default), OpenFreeMap Liberty (more detail), or the OpenTopoMap, OSM Humanitarian and Esri Satellite raster alternatives. OpenFreeMap needs no API key; it requires network access and WebGL. Background visibility, opacity and layer order still apply. Older CARTO Positron/Voyager selections migrate to OpenFreeMap Positron/Liberty. OpenFreeMap reference categories remain independent, reorderable overlays with visibility and colour controls.</li>
       <li><b>GeoJSON</b> — scenario and map groups can import GeoJSON as new layers; layer and hex controls can export GeoJSON. Invalid or unsupported features are skipped with a detailed warning. Scenario drawing import supports Point, LineString, and Polygon; the Map Layers importer supports standard GeoJSON geometry types.</li>
       <li><b>Restore scenario defaults</b> — restores background-map settings and order from the last scenario load or save, including saved hex grids. Layers added afterward remain, and Scenario Layers are never modified.</li>
       <li><b>Layer chip</b> (top bar) — click to open Map Layers; it shows the currently active drawing layer. Top-bar panel buttons toggle their panel closed if it is already open; the panel X remains available too.</li>
@@ -9324,24 +9356,24 @@ function renderMapLayersGroup(isUmpire) {
   state.mapLayers.forEach((layer, index) => {
     if (layer.type === 'hex' && !hexOverlayVisibilityAllows(layer)) return;
     const expanded = !!layerObjectsExpanded[layer.id];
-    const typeLabel = layer.type === 'raster' ? 'raster' : layer.type === 'vector' ? 'vector' : layer.type === 'hex' ? 'hex' : 'GeoJSON';
-    const color = layer.color || (layer.type === 'raster' ? '#8a8a9a' : '#e94560');
+    const typeLabel = layer.type === 'basemap' ? 'background' : layer.type === 'vector' ? 'vector' : layer.type === 'hex' ? 'hex' : 'GeoJSON';
+    const color = layer.color || (layer.type === 'basemap' ? '#8a8a9a' : '#e94560');
     const canDelete = isUmpire && ['hex','geojson'].includes(layer.type);
     html += `<div class="layer-item" style="cursor:default">
       <input type="checkbox" ${layer.visible?'checked':''} onchange="toggleMapLayerVisible('${layer.id}')">
       <span class="layer-dot" style="background:${esc(color)}"></span>
       <span class="name" style="flex:1">${esc(layer.name)}</span>
       <span style="font-size:10px;color:var(--text-dim)">${typeLabel}</span>
-      ${['raster','hex','geojson'].includes(layer.type) ? `<button class="small" title="Show/hide layer details" onclick="layerObjectsExpanded['${layer.id}']=!layerObjectsExpanded['${layer.id}'];renderLayersPanel(document.getElementById('panelBody'))">${expanded?'▼':'▶'}</button>` : ''}
+      ${['basemap','hex','geojson'].includes(layer.type) ? `<button class="small" title="Show/hide layer details" onclick="layerObjectsExpanded['${layer.id}']=!layerObjectsExpanded['${layer.id}'];renderLayersPanel(document.getElementById('panelBody'))">${expanded?'▼':'▶'}</button>` : ''}
       ${isUmpire ? `<button class="small" title="Move layer up" ${index===0?'disabled':''} onclick="moveMapLayer('${layer.id}',-1)">↑</button>
       <button class="small" title="Move layer down" ${index===state.mapLayers.length-1?'disabled':''} onclick="moveMapLayer('${layer.id}',1)">↓</button>` : ''}
       ${canDelete ? `<button class="small danger" onclick="deleteMapLayer('${layer.id}')">×</button>` : ''}
     </div>`;
     if (layer.type === 'vector' && isUmpire) {
       html += `<div style="padding:3px 8px 6px 28px;display:flex;align-items:center;gap:8px"><label style="font-size:10px;color:var(--text-dim)">Colour</label><input type="color" value="${esc(layer.color || '#777777')}" onchange="updateMapLayer('${layer.id}','color',this.value)"></div>`;
-    } else if (layer.type === 'raster' && expanded) {
+    } else if (layer.type === 'basemap' && expanded) {
       html += `<div style="padding:5px 8px 8px 28px">
-        <div class="field-group"><label>Raster map</label><select onchange="updateMapLayer('${layer.id}','baseMap',this.value)">${baseOptionsFor(layer.baseMap)}</select></div>
+        <div class="field-group"><label>Background map</label><select onchange="updateMapLayer('${layer.id}','baseMap',this.value)">${baseOptionsFor(layer.baseMap)}</select></div>
         <div class="field-group"><label>Opacity (%)</label><input type="range" min="0" max="100" step="5" value="${Math.round((layer.opacity ?? 1)*100)}" oninput="updateMapLayer('${layer.id}','opacity',parseFloat(this.value)/100,false)"><span style="font-size:10px;color:var(--text-dim)">${Math.round((layer.opacity ?? 1)*100)}%</span></div>
       </div>`;
     } else if (layer.type === 'hex' && expanded) {
@@ -10849,7 +10881,7 @@ function importScenario(event) {
       ensureSideOrders();
       ensureLayerModel();
       captureScenarioMapLayerDefaults();
-      state.version = 11;
+      state.version = 12;
       resetViewUnitIconScalesFromScenario();
       migrateApp6State();
       applySideColorsToDOM();
@@ -11717,7 +11749,7 @@ function init() {
   updateIconScaleControls();
 }
 
-const APP_VERSION = 'v081';
+const APP_VERSION = 'v082';
 
 function setupPanelResize() {
   const handle = document.getElementById('panelResizeHandle');
